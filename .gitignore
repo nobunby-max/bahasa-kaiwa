@@ -1,0 +1,5 @@
+uploads/
+thumbnails/
+credentials/
+.env
+node_modules/
