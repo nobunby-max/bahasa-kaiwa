@@ -1,5 +1,4 @@
-/* ── Reset & base ─────────────────────────────────────────────────────────── */
-*, *::before, *::after {
+* {
   box-sizing: border-box;
   margin: 0;
   padding: 0;
@@ -8,46 +7,36 @@
 html, body {
   width: 100%;
   height: 100%;
-  font-family: 'Segoe UI', 'Helvetica Neue', Arial, 'Noto Sans JP', sans-serif;
+  font-family: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
   background: #f5f5f5;
-  color: #1e293b;
-  overflow: hidden;
 }
 
-.hidden {
-  display: none !important;
-}
-
-/* ── Full-page map ────────────────────────────────────────────────────────── */
+/* Full viewport map */
 #map {
-  position: fixed;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  z-index: 0;
+  width: 100vw;
+  height: 100vh;
 }
 
-/* ── Floating "+" button ──────────────────────────────────────────────────── */
+/* Floating add photo button */
 #addPhotoBtn {
   position: fixed;
-  bottom: 32px;
-  right: 32px;
-  z-index: 100;
+  bottom: 2rem;
+  right: 2rem;
   width: 56px;
   height: 56px;
   border-radius: 50%;
   background: #2563eb;
-  color: #fff;
-  font-size: 28px;
-  line-height: 1;
+  color: white;
+  font-size: 2rem;
   border: none;
   cursor: pointer;
   box-shadow: 0 4px 16px rgba(37, 99, 235, 0.45);
+  z-index: 1000;
   display: flex;
   align-items: center;
   justify-content: center;
+  line-height: 1;
   transition: background 0.2s, transform 0.15s;
-  user-select: none;
 }
 
 #addPhotoBtn:hover {
@@ -55,158 +44,172 @@ html, body {
   transform: scale(1.08);
 }
 
-#addPhotoBtn:active {
-  transform: scale(0.97);
-}
-
-/* ── Modal overlay ────────────────────────────────────────────────────────── */
+/* Modal overlay */
 .modal-overlay {
   position: fixed;
   inset: 0;
-  z-index: 200;
-  background: rgba(15, 23, 42, 0.65);
-  display: none;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 2000;
+  display: flex;
   align-items: center;
   justify-content: center;
   padding: 16px;
 }
 
-.modal-overlay.open {
-  display: flex;
-}
-
+/* Modal container */
 .modal-container {
-  background: #fff;
-  border-radius: 16px;
-  width: 100%;
-  max-width: 900px;
-  max-height: 90vh;
-  overflow: hidden;
+  background: white;
+  border-radius: 12px;
   display: flex;
   flex-direction: row;
+  width: 90vw;
+  max-width: 1000px;
+  max-height: 90vh;
+  overflow: hidden;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.35);
 }
 
-/* ── Modal panels ─────────────────────────────────────────────────────────── */
-.modal-panel {
+/* Modal panels */
+.modal-left,
+.modal-right {
   flex: 1;
-  padding: 28px 24px;
+  padding: 1.5rem;
   overflow-y: auto;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.modal-left {
-  border-right: 1px solid #e2e8f0;
-  min-width: 0;
 }
 
 .modal-right {
-  min-width: 0;
+  border-left: 1px solid #e5e7eb;
+  background: #f9fafb;
 }
 
 .modal-title {
-  font-size: 18px;
+  font-size: 1.125rem;
   font-weight: 700;
   color: #1e293b;
-  margin-bottom: 4px;
+  margin-bottom: 1rem;
 }
 
-/* ── Drop zone ────────────────────────────────────────────────────────────── */
-.drop-zone {
-  position: relative;
-  border: 2px dashed #93c5fd;
-  border-radius: 12px;
-  background: #eff6ff;
-  min-height: 160px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: border-color 0.2s, background 0.2s;
+.map-hint {
+  font-size: 0.8rem;
+  color: #6b7280;
+  margin-bottom: 0.5rem;
+}
+
+/* Mini map */
+#miniMap {
+  width: 100%;
+  height: 400px;
+  border-radius: 8px;
   overflow: hidden;
 }
 
-.drop-zone:hover,
+/* Drop zone */
+.drop-zone {
+  border: 2px dashed #cbd5e1;
+  border-radius: 8px;
+  min-height: 200px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+  background: #f8fafc;
+  margin-bottom: 1rem;
+  transition: border-color 0.2s, background 0.2s;
+}
+
 .drop-zone.dragover {
   border-color: #2563eb;
-  background: #dbeafe;
+  background: #eff6ff;
 }
 
 .drop-zone-hint {
   text-align: center;
   color: #64748b;
-  font-size: 14px;
-  line-height: 1.7;
   pointer-events: none;
 }
 
+.drop-icon {
+  font-size: 2rem;
+  display: block;
+  margin-bottom: 0.5rem;
+}
+
+.drop-sub {
+  font-size: 0.8rem;
+  color: #94a3b8;
+  margin-top: 0.25rem;
+}
+
+/* Photo preview */
 .photo-preview {
   width: 100%;
-  height: 100%;
+  height: 200px;
   object-fit: cover;
-  border-radius: 10px;
+  border-radius: 6px;
+}
+
+/* Form groups */
+.form-group {
+  margin-bottom: 1rem;
+}
+
+.form-group label {
   display: block;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #374151;
+  margin-bottom: 0.25rem;
 }
 
-/* ── Form elements ────────────────────────────────────────────────────────── */
-.form-label {
-  font-size: 13px;
-  font-weight: 600;
-  color: #475569;
-  margin-top: 4px;
-}
-
-.form-input,
-.form-select,
-.form-textarea {
+input[type="text"],
+select,
+textarea {
   width: 100%;
-  padding: 9px 12px;
-  border: 1.5px solid #cbd5e1;
-  border-radius: 8px;
-  font-size: 14px;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 0.875rem;
+  outline: none;
+  font-family: inherit;
   color: #1e293b;
   background: #fff;
-  outline: none;
   transition: border-color 0.2s;
-  font-family: inherit;
 }
 
-.form-input:focus,
-.form-select:focus,
-.form-textarea:focus {
+input[type="text"]:focus,
+select:focus,
+textarea:focus {
   border-color: #2563eb;
   box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
 }
 
-.form-textarea {
+textarea {
   resize: vertical;
-  min-height: 72px;
 }
 
-/* ── Modal action buttons ─────────────────────────────────────────────────── */
+/* Modal action buttons */
 .modal-actions {
   display: flex;
-  gap: 10px;
-  margin-top: auto;
-  padding-top: 8px;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  margin-top: 1rem;
 }
 
 .btn {
-  flex: 1;
-  padding: 10px 16px;
-  border-radius: 8px;
-  font-size: 15px;
-  font-weight: 600;
-  cursor: pointer;
+  padding: 0.5rem 1.5rem;
+  border-radius: 6px;
   border: none;
+  cursor: pointer;
+  font-size: 0.875rem;
+  font-weight: 500;
   transition: background 0.2s, opacity 0.2s;
 }
 
 .btn-primary {
   background: #2563eb;
-  color: #fff;
+  color: white;
 }
 
 .btn-primary:hover:not(:disabled) {
@@ -219,85 +222,39 @@ html, body {
 }
 
 .btn-secondary {
-  background: #f1f5f9;
-  color: #475569;
-  border: 1.5px solid #cbd5e1;
+  background: #e5e7eb;
+  color: #374151;
 }
 
 .btn-secondary:hover {
-  background: #e2e8f0;
+  background: #d1d5db;
 }
 
-/* ── Mini map ─────────────────────────────────────────────────────────────── */
-.mini-map {
-  width: 100%;
-  height: 340px;
-  border-radius: 12px;
-  overflow: hidden;
-  border: 1.5px solid #e2e8f0;
-  flex-shrink: 0;
-}
-
+/* Coordinates display */
 .coords-display {
-  font-size: 13px;
-  color: #64748b;
-  background: #f8fafc;
-  border: 1px solid #e2e8f0;
-  border-radius: 8px;
-  padding: 8px 12px;
+  margin-top: 0.75rem;
+  padding: 0.75rem;
+  background: white;
+  border-radius: 6px;
+  border: 1px solid #e5e7eb;
+  font-size: 0.875rem;
+  color: #6b7280;
   font-family: 'Consolas', 'Courier New', monospace;
-  min-height: 38px;
-  word-break: break-all;
 }
 
-/* ── MapLibre popup customization ─────────────────────────────────────────── */
-.maplibregl-popup-content {
-  padding: 0;
-  border-radius: 12px;
-  overflow: hidden;
-  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.18);
-  max-width: 280px;
+/* Hidden utility */
+.hidden {
+  display: none !important;
 }
 
-.popup-thumb {
-  width: 100%;
-  height: 160px;
-  object-fit: cover;
-  display: block;
-  cursor: pointer;
-  transition: opacity 0.15s;
-}
-
-.popup-thumb:hover {
-  opacity: 0.9;
-}
-
-.popup-body {
-  padding: 10px 12px 12px;
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
-}
-
-.popup-address {
-  font-size: 13px;
-  color: #334155;
-  font-weight: 500;
-}
-
-.popup-date {
-  font-size: 12px;
-  color: #94a3b8;
-}
-
-/* ── Category badge ───────────────────────────────────────────────────────── */
+/* Category badge */
 .badge {
   display: inline-block;
-  padding: 2px 10px;
+  padding: 0.2rem 0.6rem;
   border-radius: 999px;
-  font-size: 12px;
+  font-size: 0.75rem;
   font-weight: 600;
-  color: #fff;
+  color: white;
   white-space: nowrap;
 }
 
@@ -307,14 +264,35 @@ html, body {
 .badge-プライベート     { background: #7c3aed; }
 .badge-その他           { background: #6b7280; }
 
-/* ── Cluster layers (injected via JS, styling reference) ──────────────────── */
-/* actual paint properties are set in app.js */
+/* MapLibre popup */
+.maplibregl-popup-content {
+  padding: 0;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
 
-/* ── Lightbox ─────────────────────────────────────────────────────────────── */
+.popup-thumb {
+  width: 100%;
+  max-width: 300px;
+  display: block;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+
+.popup-thumb:hover {
+  opacity: 0.9;
+}
+
+.popup-info {
+  padding: 0.75rem;
+}
+
+/* Lightbox */
 .lightbox {
   position: fixed;
   inset: 0;
-  z-index: 500;
+  z-index: 3000;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -324,97 +302,89 @@ html, body {
 .lightbox-overlay {
   position: absolute;
   inset: 0;
-  background: rgba(0, 0, 0, 0.82);
+  background: rgba(0, 0, 0, 0.85);
 }
 
 .lightbox-content {
   position: relative;
   z-index: 1;
-  background: #1e293b;
-  border-radius: 16px;
+  max-width: 90vw;
+  max-height: 90vh;
+  background: white;
+  border-radius: 12px;
   overflow: hidden;
-  max-width: 860px;
-  width: 100%;
-  max-height: 92vh;
   display: flex;
   flex-direction: column;
   box-shadow: 0 24px 80px rgba(0, 0, 0, 0.6);
 }
 
-.lightbox-close {
+#lightboxImg {
+  max-width: 100%;
+  max-height: 70vh;
+  object-fit: contain;
+  display: block;
+  background: #0f172a;
+}
+
+.lightbox-info {
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.lightbox-date {
+  font-size: 0.8rem;
+  color: #6b7280;
+}
+
+.lightbox-address {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: #1e293b;
+}
+
+.lightbox-comment {
+  font-size: 0.875rem;
+  color: #374151;
+  white-space: pre-wrap;
+}
+
+.lightbox-close-btn {
   position: absolute;
-  top: 12px;
-  right: 14px;
-  z-index: 2;
-  background: rgba(0, 0, 0, 0.55);
-  color: #fff;
+  top: 0.5rem;
+  right: 0.5rem;
+  background: rgba(0, 0, 0, 0.5);
+  color: white;
   border: none;
   border-radius: 50%;
-  width: 36px;
-  height: 36px;
-  font-size: 16px;
+  width: 32px;
+  height: 32px;
   cursor: pointer;
+  font-size: 1.2rem;
+  z-index: 2;
   display: flex;
   align-items: center;
   justify-content: center;
   transition: background 0.2s;
 }
 
-.lightbox-close:hover {
+.lightbox-close-btn:hover {
   background: rgba(0, 0, 0, 0.8);
 }
 
-.lightbox-img {
-  width: 100%;
-  max-height: 60vh;
-  object-fit: contain;
-  background: #0f172a;
-  display: block;
-}
-
-.lightbox-info {
-  padding: 16px 20px;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.lightbox-date {
-  font-size: 13px;
-  color: #94a3b8;
-}
-
-.lightbox-address {
-  font-size: 15px;
-  font-weight: 600;
-  color: #f1f5f9;
-}
-
-.lightbox-comment {
-  font-size: 14px;
-  color: #cbd5e1;
-  white-space: pre-wrap;
-}
-
-/* ── Responsive ───────────────────────────────────────────────────────────── */
-@media (max-width: 700px) {
+/* Responsive */
+@media (max-width: 768px) {
   .modal-container {
     flex-direction: column;
-    max-height: 96vh;
-    border-radius: 12px;
   }
 
-  .modal-left {
-    border-right: none;
-    border-bottom: 1px solid #e2e8f0;
-  }
-
-  .mini-map {
+  #miniMap {
     height: 300px;
   }
 
-  #addPhotoBtn {
-    bottom: 20px;
-    right: 20px;
+  .modal-right {
+    border-left: none;
+    border-top: 1px solid #e5e7eb;
   }
 }
