@@ -1,20 +1,23 @@
 {
   "name": "photo-map-app",
   "version": "1.0.0",
-  "description": "Photo map application using MapLibre GL JS and Google Sheets",
+  "description": "Photo map application with Google Sheets integration",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "dev": "node --watch server.js"
+    "dev": "nodemon server.js"
   },
   "dependencies": {
     "cors": "^2.8.5",
-    "dotenv": "^16.4.5",
+    "dotenv": "^16.0.0",
     "exifr": "^7.1.3",
-    "express": "^4.19.2",
-    "googleapis": "^140.0.1",
+    "express": "^4.18.2",
+    "googleapis": "^128.0.0",
     "multer": "^1.4.5-lts.1",
-    "sharp": "^0.33.4",
-    "uuid": "^10.0.0"
+    "sharp": "^0.33.0",
+    "uuid": "^9.0.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.0"
   }
 }
