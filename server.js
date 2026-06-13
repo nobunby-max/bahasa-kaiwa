@@ -53,17 +53,17 @@ let sheetsClient = null;
 
 async function getSheetsClient() {
   if (sheetsClient) return sheetsClient;
-  
+
   const credPath = path.join(__dirname, 'credentials', 'service-account.json');
   if (!fs.existsSync(credPath)) {
     throw new Error('credentials/service-account.json が見つかりません。SETUP.md を参照してください。');
   }
-  
+
   const auth = new google.auth.GoogleAuth({
     keyFile: credPath,
     scopes: ['https://www.googleapis.com/auth/spreadsheets']
   });
-  
+
   sheetsClient = google.sheets({ version: 'v4', auth });
   return sheetsClient;
 }
@@ -101,13 +101,13 @@ app.get('/api/photos', async (req, res) => {
     if (!SHEET_ID) {
       return res.json({ type: 'FeatureCollection', features: [] });
     }
-    
+
     const sheets = await getSheetsClient();
     const result = await sheets.spreadsheets.values.get({
       spreadsheetId: SHEET_ID,
       range: `${SHEET_NAME}!A2:I`
     });
-    
+
     const rows = result.data.values || [];
     const features = rows
       .filter(row => row[7] && row[8]) // must have lat and lng
@@ -129,7 +129,7 @@ app.get('/api/photos', async (req, res) => {
           lng: parseFloat(row[8])
         }
       }));
-    
+
     res.json({ type: 'FeatureCollection', features });
   } catch (err) {
     console.error('GET /api/photos エラー:', err);
@@ -143,19 +143,19 @@ app.post('/api/upload', upload.single('photo'), async (req, res) => {
     if (!req.file) {
       return res.status(400).json({ error: 'ファイルがありません' });
     }
-    
+
     const filename = req.file.filename;
     const filePath = path.join(uploadsDir, filename);
     const ext = path.extname(filename);
     const thumbnailFilename = `thumb_${filename.replace(ext, '')}.jpg`;
     const thumbnailPath = path.join(thumbnailsDir, thumbnailFilename);
-    
+
     // Generate 300px wide thumbnail
     await sharp(filePath)
       .resize(300, null, { withoutEnlargement: true })
       .jpeg({ quality: 85 })
       .toFile(thumbnailPath);
-    
+
     // Extract EXIF date or use file mtime
     let date;
     try {
@@ -167,12 +167,12 @@ app.post('/api/upload', upload.single('photo'), async (req, res) => {
     } catch (exifErr) {
       console.warn('EXIF読み取りエラー:', exifErr.message);
     }
-    
+
     if (!date) {
       const stat = fs.statSync(filePath);
       date = stat.mtime.toISOString().split('T')[0];
     }
-    
+
     res.json({ filename, thumbnail: thumbnailFilename, date });
   } catch (err) {
     console.error('POST /api/upload エラー:', err);
@@ -188,19 +188,19 @@ app.post('/api/upload', upload.single('photo'), async (req, res) => {
 app.post('/api/photos', async (req, res) => {
   try {
     const { filename, thumbnail, date, address, category, comment, lat, lng } = req.body;
-    
+
     if (!filename || !lat || !lng) {
       return res.status(400).json({ error: '必須フィールドが不足しています (filename, lat, lng)' });
     }
-    
+
     const id = uuidv4();
     const row = [id, filename, thumbnail || '', date || '', address || '', category || '', comment || '', String(lat), String(lng)];
-    
+
     if (!SHEET_ID) {
       console.warn('GOOGLE_SHEET_ID が設定されていません。データは保存されません。');
       return res.json({ id, message: 'GOOGLE_SHEET_ID未設定のため保存スキップ' });
     }
-    
+
     const sheets = await getSheetsClient();
     await sheets.spreadsheets.values.append({
       spreadsheetId: SHEET_ID,
@@ -209,7 +209,7 @@ app.post('/api/photos', async (req, res) => {
       insertDataOption: 'INSERT_ROWS',
       requestBody: { values: [row] }
     });
-    
+
     res.json({ id });
   } catch (err) {
     console.error('POST /api/photos エラー:', err);

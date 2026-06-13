@@ -23,7 +23,7 @@
 
         <div id="dropZone" class="drop-zone">
           <img id="photoPreview" class="photo-preview hidden" alt="プレビュー">
-          <div id="dropZoneText" class="drop-zone-text">
+          <div id="dropHint" class="drop-zone-hint">
             <span class="drop-icon">📷</span>
             <p>ここに写真をドラッグ＆ドロップ</p>
             <p class="drop-sub">またはクリックして選択</p>
@@ -33,12 +33,12 @@
 
         <div class="form-group">
           <label for="addressInput">住所・場所</label>
-          <input type="text" id="addressInput" placeholder="例：東京都渋谷区..." class="form-input">
+          <input type="text" id="addressInput" placeholder="例：東京都渋谷区...">
         </div>
 
         <div class="form-group">
           <label for="categorySelect">カテゴリ</label>
-          <select id="categorySelect" class="form-select">
+          <select id="categorySelect">
             <option value="お客様">お客様</option>
             <option value="政府・当局関係者">政府・当局関係者</option>
             <option value="内部">内部</option>
@@ -49,32 +49,33 @@
 
         <div class="form-group">
           <label for="commentInput">コメント</label>
-          <textarea id="commentInput" rows="3" placeholder="メモや説明を入力..." class="form-textarea"></textarea>
+          <textarea id="commentInput" rows="3" placeholder="メモや説明を入力..."></textarea>
+        </div>
+
+        <div class="modal-actions">
+          <button id="cancelBtn" class="btn btn-secondary">キャンセル</button>
+          <button id="saveBtn" class="btn btn-primary" disabled>保存</button>
         </div>
       </div>
 
       <!-- Right panel -->
       <div class="modal-right">
         <h2 class="modal-title">位置を選択</h2>
+        <p class="map-hint">地図をクリックして位置を指定してください</p>
         <div id="miniMap"></div>
         <div id="coordsDisplay" class="coords-display">
-          <span id="coordsText">地図をクリックして位置を選択してください</span>
+          <span id="coordsText">位置が選択されていません</span>
         </div>
-        <p class="map-hint">マーカーをドラッグして位置を調整できます</p>
+        <p class="map-hint" style="margin-top:0.5rem">マーカーをドラッグして位置を調整できます</p>
       </div>
-    </div>
-
-    <div class="modal-footer">
-      <button id="cancelBtn" class="btn btn-secondary">キャンセル</button>
-      <button id="saveBtn" class="btn btn-primary">保存</button>
     </div>
   </div>
 
   <!-- Lightbox -->
   <div id="lightbox" class="lightbox hidden">
-    <div class="lightbox-backdrop"></div>
+    <div id="lightboxOverlay" class="lightbox-overlay"></div>
     <div class="lightbox-content">
-      <button id="lightboxClose" class="lightbox-close">✕</button>
+      <button id="lightboxClose" class="lightbox-close-btn">✕</button>
       <img id="lightboxImg" class="lightbox-img" alt="フルサイズ写真">
       <div class="lightbox-info">
         <div id="lightboxDate" class="lightbox-date"></div>

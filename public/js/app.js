@@ -253,9 +253,9 @@ function closeLightbox() {
 
 // ── Modal open/close ──────────────────────────────────────────────────────────
 function openModal() {
-  document.getElementById('addPhotoModal').classList.add('open');
+  document.getElementById('addPhotoModal').classList.remove('hidden');
   if (!miniMap) {
-    initMiniMap();
+    setTimeout(() => initMiniMap(), 100);
   } else {
     // Resize in case container changed
     setTimeout(() => miniMap.resize(), 100);
@@ -263,7 +263,7 @@ function openModal() {
 }
 
 function closeModal() {
-  document.getElementById('addPhotoModal').classList.remove('open');
+  document.getElementById('addPhotoModal').classList.add('hidden');
   resetForm();
 }
 
@@ -271,11 +271,12 @@ function resetForm() {
   document.getElementById('fileInput').value = '';
   document.getElementById('photoPreview').src = '';
   document.getElementById('photoPreview').classList.add('hidden');
-  document.querySelector('.drop-zone-hint').style.display = '';
+  const hint = document.getElementById('dropHint');
+  if (hint) hint.style.display = '';
   document.getElementById('addressInput').value = '';
   document.getElementById('categorySelect').selectedIndex = 0;
   document.getElementById('commentInput').value = '';
-  document.getElementById('coordsDisplay').textContent = '地図をクリックして位置を選択してください';
+  document.getElementById('coordsText').textContent = '位置が選択されていません';
   document.getElementById('saveBtn').disabled = true;
   selectedLat = null;
   selectedLng = null;
@@ -331,7 +332,7 @@ function setupDropZone() {
   const dropZone = document.getElementById('dropZone');
   const fileInput = document.getElementById('fileInput');
   const preview = document.getElementById('photoPreview');
-  const hint = document.querySelector('.drop-zone-hint');
+  const hint = document.getElementById('dropHint');
 
   dropZone.addEventListener('click', () => fileInput.click());
 
