@@ -121,8 +121,100 @@ npm run dev
 
 ---
 
-## 8. 注意事項
+## 8. Cloudflare へのデプロイ
+
+このアプリは Node.js サーバーが必要なため、**Cloudflare Workers** を使ってデプロイします。  
+写真は **Cloudflare R2**（転送費用ゼロ）に保存します。
+
+### 8-1. 前提条件
+
+- ローカル PC に Node.js・npm がインストール済み
+- Cloudflare アカウント（https://dash.cloudflare.com）
+
+### 8-2. リポジトリをローカルにクローン
+
+```bash
+git clone https://github.com/nobunby-max/photo-map-app
+cd photo-map-app
+npm install
+```
+
+### 8-3. Wrangler CLI のインストールとログイン
+
+```bash
+npm install -g wrangler
+wrangler login
+```
+
+ブラウザが開いて Cloudflare の認証ページが表示されます。  
+**パスワードをターミナルやチャットに入力する必要はありません。**
+
+### 8-4. Cloudflare R2 バケットの作成
+
+```bash
+wrangler r2 bucket create photo-map-uploads
+wrangler r2 bucket create photo-map-thumbnails
+```
+
+### 8-5. wrangler.toml の作成
+
+プロジェクトルートに `wrangler.toml` を作成:
+
+```toml
+name = "photo-map-app"
+main = "worker.js"
+compatibility_date = "2024-01-01"
+
+[[r2_buckets]]
+binding = "UPLOADS"
+bucket_name = "photo-map-uploads"
+
+[[r2_buckets]]
+binding = "THUMBNAILS"
+bucket_name = "photo-map-thumbnails"
+
+[vars]
+GOOGLE_SHEET_ID = "your_spreadsheet_id_here"
+```
+
+### 8-6. シークレット（サービスアカウントJSON）の登録
+
+Google サービスアカウントの JSON 内容を Cloudflare のシークレットとして登録します：
+
+```bash
+# credentials/service-account.json の内容をそのまま貼り付け
+wrangler secret put GOOGLE_SERVICE_ACCOUNT_JSON
+```
+
+### 8-7. デプロイ
+
+```bash
+wrangler deploy
+```
+
+デプロイ完了後、以下のような URL が表示されます：
+
+```
+https://photo-map-app.your-subdomain.workers.dev
+```
+
+### 8-8. カスタムドメインの設定（任意）
+
+Cloudflare Dashboard → Workers & Pages → photo-map-app → **カスタムドメイン** から独自ドメインを設定できます。
+
+### 8-9. GitHub との自動デプロイ連携（推奨）
+
+GitHub リポジトリと連携すると `main` ブランチへのプッシュで自動デプロイされます：
+
+1. Cloudflare Dashboard → **Workers & Pages** → **Create** → **Connect to Git**
+2. GitHub リポジトリを選択
+3. ビルドコマンド: `npm install`、出力ディレクトリ: `public`
+
+---
+
+## 9. 注意事項
 
 - `credentials/`, `uploads/`, `thumbnails/`, `.env` は `.gitignore` に含まれており、Gitには保存されません
-- 写真が増えた場合は `uploads/` と `thumbnails/` を別途バックアップしてください
-- Cloudflare R2 への移行も可能です（大量写真・チーム共有向け）
+- **パスワードや認証情報をチャットやコードに記載しないでください**（wrangler secret コマンドを使用）
+- 写真が増えた場合は Cloudflare R2 が自動でスケールします（10GB まで無料）
+- R2 の料金目安: 保存 $0.015/GB/月、転送費用ゼロ
