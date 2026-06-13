@@ -1,0 +1,128 @@
+# Photo Map App — セットアップガイド
+
+撮影した写真を地図上で管理・共有するウェブアプリです。
+
+## 構成
+
+- **地図**: MapLibre GL JS（OpenStreetMapタイル、無料）
+- **メタデータ**: Google Sheets
+- **写真保存**: サーバーローカル（uploads/ + thumbnails/）
+- **バックエンド**: Node.js + Express
+
+---
+
+## 1. 前提条件
+
+- Node.js v18 以上
+- Google アカウント
+- Google Cloud Console へのアクセス
+
+---
+
+## 2. Google Sheets API の設定
+
+### 2-1. Google Cloud プロジェクトの作成
+
+1. [Google Cloud Console](https://console.cloud.google.com/) を開く
+2. 新しいプロジェクトを作成（例: `photo-map-app`）
+3. 左メニュー → **APIとサービス** → **ライブラリ**
+4. 「Google Sheets API」を検索して **有効にする**
+
+### 2-2. サービスアカウントの作成
+
+1. **APIとサービス** → **認証情報** → **認証情報を作成** → **サービスアカウント**
+2. 名前を入力（例: `photo-map-sheets`）→ 作成
+3. 作成したサービスアカウントをクリック → **キー** タブ → **鍵を追加** → **JSON**
+4. ダウンロードしたJSONファイルを `credentials/service-account.json` として配置
+
+```
+credentials/
+└── service-account.json   ← ここに置く（Gitには含まれません）
+```
+
+### 2-3. Google スプレッドシートの作成と共有
+
+1. [Google スプレッドシート](https://sheets.google.com/) で新規シートを作成
+2. シート名を **Photos** に変更（デフォルトの「シート1」から変更）
+3. URLから スプレッドシートID をコピー  
+   例: `https://docs.google.com/spreadsheets/d/【ここがID】/edit`
+4. **共有** ボタン → サービスアカウントのメールアドレスを追加（編集者権限）  
+   メールアドレスは `credentials/service-account.json` 内の `client_email` フィールドに記載
+
+---
+
+## 3. 環境変数の設定
+
+`.env.example` をコピーして `.env` を作成:
+
+```bash
+cp .env.example .env
+```
+
+`.env` を編集:
+
+```
+GOOGLE_SHEET_ID=your_spreadsheet_id_here
+PORT=3000
+```
+
+---
+
+## 4. インストール・起動
+
+```bash
+npm install
+npm start
+```
+
+ブラウザで `http://localhost:3000` を開く。
+
+開発時（ファイル変更で自動再起動）:
+```bash
+npm run dev
+```
+
+---
+
+## 5. テスト写真の追加
+
+アプリ起動後、ブラウザ右下の **「＋ 写真を追加」** ボタンから写真を追加できます。
+
+### 手動で追加する場合（例: nusantara.jpg）
+
+1. フルサイズ写真を `uploads/nusantara.jpg` に配置
+2. サムネイル（300px幅）を `thumbnails/nusantara.jpg` に配置  
+   ImageMagick を使う場合:
+   ```bash
+   convert uploads/nusantara.jpg -resize 300x thumbnails/nusantara.jpg
+   ```
+3. アプリの「＋ 写真を追加」から通常通り入力して保存、または Google Sheets に直接行を追加
+
+---
+
+## 6. カテゴリー一覧
+
+| カテゴリー | 用途 |
+|---|---|
+| お客様 | 顧客との写真 |
+| 政府・当局関係者 | 政府・行政関係者との写真 |
+| 内部 | 社内・内部向け |
+| プライベート | 個人的な写真 |
+| その他 | 上記に当てはまらないもの |
+
+---
+
+## 7. Google Sheets のデータ構造
+
+アプリが自動でヘッダー行を作成します:
+
+| A: id | B: filename | C: thumbnail | D: date | E: address | F: category | G: comment | H: lat | I: lng |
+|---|---|---|---|---|---|---|---|---|
+
+---
+
+## 8. 注意事項
+
+- `credentials/`, `uploads/`, `thumbnails/`, `.env` は `.gitignore` に含まれており、Gitには保存されません
+- 写真が増えた場合は `uploads/` と `thumbnails/` を別途バックアップしてください
+- Cloudflare R2 への移行も可能です（大量写真・チーム共有向け）
