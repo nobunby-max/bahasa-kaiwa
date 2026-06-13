@@ -4,70 +4,69 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>フォトマップ</title>
-  <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css">
+  <link href="https://unpkg.com/maplibre-gl@3/dist/maplibre-gl.css" rel="stylesheet">
+  <script src="https://unpkg.com/maplibre-gl@3/dist/maplibre-gl.js"></script>
   <link rel="stylesheet" href="/css/style.css">
 </head>
 <body>
   <div id="map"></div>
 
   <!-- Floating add button -->
-  <button id="addPhotoBtn" title="写真を追加">＋</button>
+  <button id="addPhotoBtn" title="写真を追加">+</button>
 
-  <!-- Add Photo Modal -->
-  <div id="modal" class="modal hidden">
-    <div class="modal-backdrop"></div>
+  <!-- Add photo modal -->
+  <div id="addPhotoModal" class="modal-overlay hidden">
     <div class="modal-container">
-      <div class="modal-header">
-        <h2>写真を追加</h2>
-        <button class="modal-close" id="cancelBtn">✕</button>
-      </div>
-      <div class="modal-body">
-        <!-- LEFT PANEL -->
-        <div class="panel left-panel">
-          <div id="dropzone" class="dropzone">
-            <div id="dropzoneLabel">
-              <span class="drop-icon">📷</span>
-              <p>写真をドラッグ＆ドロップ<br>またはクリックして選択</p>
-            </div>
-            <img id="previewImg" class="hidden" alt="プレビュー">
-            <input type="file" id="fileInput" accept="image/*" style="display:none">
+      <!-- Left panel -->
+      <div class="modal-left">
+        <h2 class="modal-title">写真を追加</h2>
+
+        <div id="dropZone" class="drop-zone">
+          <img id="photoPreview" class="photo-preview hidden" alt="プレビュー">
+          <div id="dropZoneText" class="drop-zone-text">
+            <span class="drop-icon">📷</span>
+            <p>ここに写真をドラッグ＆ドロップ</p>
+            <p class="drop-sub">またはクリックして選択</p>
           </div>
-          <div class="form-group">
-            <label for="addressInput">住所・場所名</label>
-            <input type="text" id="addressInput" placeholder="例：東京都渋谷区...">
-          </div>
-          <div class="form-group">
-            <label for="categorySelect">カテゴリー</label>
-            <select id="categorySelect">
-              <option value="">選択してください</option>
-              <option value="お客様">お客様</option>
-              <option value="政府・当局関係者">政府・当局関係者</option>
-              <option value="内部">内部</option>
-              <option value="プライベート">プライベート</option>
-              <option value="その他">その他</option>
-            </select>
-          </div>
-          <div class="form-group">
-            <label for="commentInput">コメント</label>
-            <textarea id="commentInput" rows="3" placeholder="メモを入力..."></textarea>
-          </div>
+          <input type="file" id="fileInput" accept="image/*" class="hidden">
         </div>
 
-        <!-- RIGHT PANEL -->
-        <div class="panel right-panel">
-          <label>地図で場所を選択（クリックでピンを設置）</label>
-          <div id="miniMap"></div>
-          <div id="coordsDisplay" class="coords-display">
-            <span id="latDisplay">緯度: --</span>
-            <span id="lngDisplay">経度: --</span>
-          </div>
-          <p class="map-hint">ピンをドラッグして位置を調整できます</p>
+        <div class="form-group">
+          <label for="addressInput">住所・場所</label>
+          <input type="text" id="addressInput" placeholder="例：東京都渋谷区..." class="form-input">
+        </div>
+
+        <div class="form-group">
+          <label for="categorySelect">カテゴリ</label>
+          <select id="categorySelect" class="form-select">
+            <option value="お客様">お客様</option>
+            <option value="政府・当局関係者">政府・当局関係者</option>
+            <option value="内部">内部</option>
+            <option value="プライベート">プライベート</option>
+            <option value="その他">その他</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="commentInput">コメント</label>
+          <textarea id="commentInput" rows="3" placeholder="メモや説明を入力..." class="form-textarea"></textarea>
         </div>
       </div>
-      <div class="modal-footer">
-        <button id="cancelBtn2" class="btn btn-secondary">キャンセル</button>
-        <button id="saveBtn" class="btn btn-primary">保存</button>
+
+      <!-- Right panel -->
+      <div class="modal-right">
+        <h2 class="modal-title">位置を選択</h2>
+        <div id="miniMap"></div>
+        <div id="coordsDisplay" class="coords-display">
+          <span id="coordsText">地図をクリックして位置を選択してください</span>
+        </div>
+        <p class="map-hint">マーカーをドラッグして位置を調整できます</p>
       </div>
+    </div>
+
+    <div class="modal-footer">
+      <button id="cancelBtn" class="btn btn-secondary">キャンセル</button>
+      <button id="saveBtn" class="btn btn-primary">保存</button>
     </div>
   </div>
 
@@ -75,18 +74,17 @@
   <div id="lightbox" class="lightbox hidden">
     <div class="lightbox-backdrop"></div>
     <div class="lightbox-content">
-      <button class="lightbox-close" id="lightboxClose">✕</button>
-      <img id="lightboxImg" alt="フルサイズ">
+      <button id="lightboxClose" class="lightbox-close">✕</button>
+      <img id="lightboxImg" class="lightbox-img" alt="フルサイズ写真">
       <div class="lightbox-info">
-        <div id="lightboxCategory" class="category-badge"></div>
-        <p id="lightboxDate"></p>
-        <p id="lightboxAddress"></p>
-        <p id="lightboxComment"></p>
+        <div id="lightboxDate" class="lightbox-date"></div>
+        <div id="lightboxAddress" class="lightbox-address"></div>
+        <div id="lightboxCategory" class="lightbox-category"></div>
+        <div id="lightboxComment" class="lightbox-comment"></div>
       </div>
     </div>
   </div>
 
-  <script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
   <script src="/js/app.js"></script>
 </body>
 </html>
