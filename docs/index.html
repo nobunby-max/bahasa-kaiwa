@@ -285,6 +285,21 @@
     #toast.show { display: block; animation: fadeup .3s ease; }
     @keyframes fadeup { from { opacity:0; transform: translateX(-50%) translateY(8px); } to { opacity:1; transform: translateX(-50%) translateY(0); } }
 
+    /* ── Multi-photo popup grid ── */
+    .multi-thumb-grid {
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; max-height: 260px; overflow-y: auto;
+    }
+    .multi-thumb-item {
+      cursor: pointer; border-radius: 6px; overflow: hidden; position: relative;
+      aspect-ratio: 1; transition: opacity .15s;
+    }
+    .multi-thumb-item:hover { opacity: .85; }
+    .multi-thumb-item img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .multi-thumb-label {
+      position: absolute; bottom: 0; left: 0; right: 0;
+      background: rgba(0,0,0,0.55); padding: 2px 4px; text-align: center;
+    }
+
     .address-search { display: flex; gap: 6px; }
     .address-search .form-input { flex: 1; }
     .btn-geocode {
@@ -550,20 +565,36 @@ function initMainMap() {
   mainMap.on('load', refreshMapMarkers);
 }
 
+function locKey(p) { return `${(+p.lat).toFixed(5)}_${(+p.lng).toFixed(5)}`; }
+
 function refreshMapMarkers() {
   markers.forEach(m => m.remove());
   markers.length = 0;
-  const photos = DB.load();
-  document.getElementById('map-count').textContent = `${photos.length} 枚`;
+  const photos = DB.load().filter(p => p.lat && p.lng);
+  document.getElementById('map-count').textContent = `${DB.load().length} 枚`;
   if (!photos.length) return;
 
+  // Group by location
+  const groups = {};
   photos.forEach(p => {
-    if (!p.lat || !p.lng) return;
+    const k = locKey(p);
+    if (!groups[k]) groups[k] = [];
+    groups[k].push(p);
+  });
+
+  Object.values(groups).forEach(group => {
+    const first = group[0];
     const el = document.createElement('div');
     el.className = 'map-marker';
+    if (group.length > 1) {
+      el.style.cssText += ';display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#fff;transform:rotate(-45deg)';
+      el.textContent = group.length;
+    }
 
-    const popup = new maplibregl.Popup({ offset: 20, maxWidth: '220px' })
-      .setHTML(`
+    let popupHTML;
+    if (group.length === 1) {
+      const p = first;
+      popupHTML = `
         <img class="popup-thumb" src="${p.thumbnail || p.full}" alt=""
           onclick="openLightbox('${p.id}')" style="cursor:pointer">
         <div class="popup-body">
@@ -572,25 +603,36 @@ function refreshMapMarkers() {
             <span class="popup-date">${p.date || '日付不明'}</span>
             ${badgeHTML(p.category)}
           </div>
-        </div>
-      `);
+        </div>`;
+    } else {
+      const thumbs = group.map(p => `
+        <div class="multi-thumb-item" onclick="openLightbox('${p.id}')">
+          <img src="${p.thumbnail || p.full}" alt="">
+          <div class="multi-thumb-label">${badgeHTML(p.category)}</div>
+        </div>`).join('');
+      popupHTML = `
+        <div class="popup-body" style="padding:10px 10px 6px;">
+          <p class="popup-addr" style="margin-bottom:8px;">${first.address || '住所未設定'} <strong>(${group.length}枚)</strong></p>
+          <div class="multi-thumb-grid">${thumbs}</div>
+        </div>`;
+    }
+
+    const popup = new maplibregl.Popup({ offset: 20, maxWidth: group.length > 1 ? '300px' : '220px' })
+      .setHTML(popupHTML);
 
     const m = new maplibregl.Marker({ element: el })
-      .setLngLat([p.lng, p.lat])
+      .setLngLat([first.lng, first.lat])
       .setPopup(popup)
       .addTo(mainMap);
     markers.push(m);
   });
 
-  // Fit bounds to all markers
-  if (photos.filter(p => p.lat && p.lng).length > 0) {
-    const lngs = photos.filter(p=>p.lng).map(p=>p.lng);
-    const lats = photos.filter(p=>p.lat).map(p=>p.lat);
-    mainMap.fitBounds(
-      [[Math.min(...lngs), Math.min(...lats)], [Math.max(...lngs), Math.max(...lats)]],
-      { padding: 60, maxZoom: 14, duration: 800 }
-    );
-  }
+  // Fit bounds
+  const lngs = photos.map(p=>p.lng), lats = photos.map(p=>p.lat);
+  mainMap.fitBounds(
+    [[Math.min(...lngs), Math.min(...lats)], [Math.max(...lngs), Math.max(...lats)]],
+    { padding: 60, maxZoom: 14, duration: 800 }
+  );
 }
 
 // ═══════════════════════════════════════════════════════════════
