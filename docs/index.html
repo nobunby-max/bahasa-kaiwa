@@ -285,7 +285,17 @@
     #toast.show { display: block; animation: fadeup .3s ease; }
     @keyframes fadeup { from { opacity:0; transform: translateX(-50%) translateY(8px); } to { opacity:1; transform: translateX(-50%) translateY(0); } }
 
-    @media (max-width: 640px) {
+    .address-search { display: flex; gap: 6px; }
+    .address-search .form-input { flex: 1; }
+    .btn-geocode {
+      padding: 9px 14px; border-radius: 10px; border: 1.5px solid #e94560;
+      background: #e94560; color: #fff; cursor: pointer; font-size: 13px; font-weight: 700;
+      white-space: nowrap; transition: background .15s;
+    }
+    .btn-geocode:hover { background: #c73652; }
+    .btn-geocode:disabled { background: #d1d5db; border-color: #d1d5db; cursor: not-allowed; }
+
+
       .modal-body { flex-direction: column; }
       .panel-left { width: 100%; border-right: none; border-bottom: 1px solid #f0f0f0; max-height: 50vh; }
       .home-btns { flex-direction: column; align-items: center; }
@@ -384,7 +394,10 @@
       </div>
       <div class="form-group">
         <label class="form-label">📍 住所・場所</label>
-        <input class="form-input" id="edit-address" type="text">
+        <div class="address-search">
+          <input class="form-input" id="edit-address" type="text" placeholder="住所を入力してEnterまたは🔍" onkeydown="if(event.key==='Enter') geocodeAddress('edit-address','edit-mini-map')">
+          <button class="btn-geocode" id="btn-geocode-edit" onclick="geocodeAddress('edit-address','edit-mini-map')">🔍</button>
+        </div>
       </div>
       <div class="form-group">
         <label class="form-label">🏷️ カテゴリー</label>
@@ -428,7 +441,10 @@
         <div class="form-area">
           <div class="form-group">
             <label class="form-label">📍 住所・場所</label>
-            <input class="form-input" id="input-address" type="text" placeholder="例: ヌサンタラ、東カリマンタン州、インドネシア">
+            <div class="address-search">
+              <input class="form-input" id="input-address" type="text" placeholder="住所を入力してEnterまたは🔍" onkeydown="if(event.key==='Enter') geocodeAddress('input-address','mini-map')">
+              <button class="btn-geocode" id="btn-geocode-add" onclick="geocodeAddress('input-address','mini-map')">🔍</button>
+            </div>
           </div>
           <div class="form-group">
             <label class="form-label">🏷️ カテゴリー</label>
@@ -726,6 +742,37 @@ function initMiniMap() {
   miniMap.on('click', e => {
     placePin(e.lngLat.lat, e.lngLat.lng);
   });
+}
+
+async function forwardGeocode(query) {
+  try {
+    const res = await fetch(
+      `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=1`,
+      { headers: { 'Accept-Language': 'ja' } }
+    );
+    const data = await res.json();
+    if (data && data[0]) return { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon), display: data[0].display_name };
+    return null;
+  } catch { return null; }
+}
+
+async function geocodeAddress(inputId, mapId) {
+  const query = document.getElementById(inputId).value.trim();
+  if (!query) return;
+  const btnId = inputId === 'input-address' ? 'btn-geocode-add' : 'btn-geocode-edit';
+  const btn = document.getElementById(btnId);
+  btn.disabled = true; btn.textContent = '…';
+  const result = await forwardGeocode(query);
+  btn.disabled = false; btn.textContent = '🔍';
+  if (!result) { showToast('⚠️ 住所が見つかりませんでした'); return; }
+
+  if (mapId === 'mini-map' && miniMap) {
+    miniMap.flyTo({ center: [result.lng, result.lat], zoom: 14 });
+    placePin(result.lat, result.lng, false);
+  } else if (mapId === 'edit-mini-map' && editMap) {
+    editMap.flyTo({ center: [result.lng, result.lat], zoom: 14 });
+    placEditPin(result.lat, result.lng, false);
+  }
 }
 
 async function reverseGeocode(lat, lng) {
