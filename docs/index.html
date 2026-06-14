@@ -1,0 +1,631 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Photo Map</title>
+  <link href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" rel="stylesheet">
+  <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f0f2f5; color: #1a1a2e; }
+
+    /* ── Views ── */
+    .view { display: none; }
+    .view.active { display: block; }
+
+    /* ── Landing ── */
+    #view-home {
+      min-height: 100vh;
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+    }
+    #view-home.active { display: flex; }
+    .home-logo { font-size: 56px; margin-bottom: 12px; }
+    .home-title { font-size: 28px; font-weight: 700; color: #fff; letter-spacing: 1px; margin-bottom: 6px; }
+    .home-sub { font-size: 14px; color: rgba(255,255,255,0.55); margin-bottom: 48px; }
+    .home-btns { display: flex; gap: 16px; flex-wrap: wrap; justify-content: center; }
+    .btn-home {
+      display: flex; flex-direction: column; align-items: center; gap: 10px;
+      padding: 28px 40px; border-radius: 20px; border: none; cursor: pointer;
+      font-size: 15px; font-weight: 600; transition: transform .15s, box-shadow .15s;
+      min-width: 160px;
+    }
+    .btn-home:hover { transform: translateY(-3px); box-shadow: 0 12px 32px rgba(0,0,0,0.3); }
+    .btn-home .icon { font-size: 36px; }
+    .btn-home-map { background: #e94560; color: #fff; }
+    .btn-home-upload { background: #fff; color: #1a1a2e; }
+    .home-count { margin-top: 40px; font-size: 13px; color: rgba(255,255,255,0.4); }
+
+    /* ── Map View ── */
+    #view-map { height: 100vh; display: none; flex-direction: column; }
+    #view-map.active { display: flex; }
+    .map-header {
+      display: flex; align-items: center; gap: 12px;
+      padding: 12px 16px; background: #1a1a2e; color: #fff; z-index: 10;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+    }
+    .map-header h1 { font-size: 16px; font-weight: 600; flex: 1; }
+    .btn-back, .btn-add-float {
+      border: none; cursor: pointer; border-radius: 10px;
+      font-size: 13px; font-weight: 600; padding: 8px 14px;
+    }
+    .btn-back { background: rgba(255,255,255,0.12); color: #fff; }
+    .btn-back:hover { background: rgba(255,255,255,0.2); }
+    #map { flex: 1; }
+    .btn-add-float {
+      position: fixed; bottom: 24px; right: 24px; z-index: 100;
+      background: #e94560; color: #fff; font-size: 15px;
+      padding: 14px 22px; border-radius: 50px;
+      box-shadow: 0 4px 20px rgba(233,69,96,0.5);
+      display: none;
+    }
+    #view-map.active .btn-add-float { display: block; }
+    .btn-add-float:hover { background: #c73652; transform: scale(1.05); }
+
+    /* ── Map Popup ── */
+    .maplibregl-popup-content {
+      padding: 0 !important; border-radius: 14px !important;
+      overflow: hidden; box-shadow: 0 8px 32px rgba(0,0,0,0.2) !important;
+      max-width: 220px;
+    }
+    .popup-thumb {
+      width: 100%; height: 160px; object-fit: cover; display: block; cursor: pointer;
+    }
+    .popup-body { padding: 10px 12px 12px; }
+    .popup-addr { font-size: 12px; color: #555; margin-bottom: 6px; line-height: 1.4; }
+    .popup-meta { display: flex; align-items: center; gap: 6px; justify-content: space-between; }
+    .popup-date { font-size: 11px; color: #999; }
+
+    /* ── Category Badges ── */
+    .badge {
+      display: inline-block; font-size: 10px; font-weight: 700;
+      padding: 2px 8px; border-radius: 20px; white-space: nowrap;
+    }
+    .badge-customer   { background: #dbeafe; color: #1d4ed8; }
+    .badge-government { background: #fee2e2; color: #dc2626; }
+    .badge-internal   { background: #dcfce7; color: #16a34a; }
+    .badge-private    { background: #f3e8ff; color: #7c3aed; }
+    .badge-other      { background: #f1f5f9; color: #64748b; }
+
+    /* ── Lightbox ── */
+    #lightbox {
+      display: none; position: fixed; inset: 0; z-index: 2000;
+      background: rgba(0,0,0,0.92); flex-direction: column;
+      align-items: center; justify-content: center; padding: 20px;
+    }
+    #lightbox.open { display: flex; }
+    .lightbox-img {
+      max-width: 100%; max-height: 60vh; object-fit: contain;
+      border-radius: 8px; box-shadow: 0 8px 40px rgba(0,0,0,0.5);
+    }
+    .lightbox-meta {
+      margin-top: 20px; background: rgba(255,255,255,0.08);
+      border-radius: 14px; padding: 16px 24px; color: #fff;
+      max-width: 480px; width: 100%;
+    }
+    .lightbox-meta-row { display: flex; gap: 8px; margin-bottom: 8px; align-items: flex-start; }
+    .lightbox-meta-row:last-child { margin-bottom: 0; }
+    .meta-label { font-size: 11px; color: rgba(255,255,255,0.45); min-width: 60px; padding-top: 1px; }
+    .meta-value { font-size: 13px; color: #fff; line-height: 1.5; }
+    .lightbox-close {
+      position: absolute; top: 16px; right: 20px;
+      background: rgba(255,255,255,0.12); border: none; color: #fff;
+      font-size: 22px; cursor: pointer; border-radius: 50%;
+      width: 40px; height: 40px; display: flex; align-items: center; justify-content: center;
+    }
+    .lightbox-close:hover { background: rgba(255,255,255,0.25); }
+
+    /* ── Upload Modal ── */
+    #modal-upload {
+      display: none; position: fixed; inset: 0; z-index: 1500;
+      background: rgba(0,0,0,0.6); align-items: center; justify-content: center;
+      padding: 16px;
+    }
+    #modal-upload.open { display: flex; }
+    .modal-box {
+      background: #fff; border-radius: 20px; width: 100%; max-width: 860px;
+      max-height: 90vh; overflow: hidden; display: flex; flex-direction: column;
+      box-shadow: 0 24px 64px rgba(0,0,0,0.3);
+    }
+    .modal-header {
+      display: flex; align-items: center; padding: 16px 20px;
+      border-bottom: 1px solid #f0f0f0;
+    }
+    .modal-header h2 { font-size: 16px; font-weight: 700; flex: 1; }
+    .modal-close {
+      background: #f1f5f9; border: none; cursor: pointer; border-radius: 8px;
+      width: 32px; height: 32px; font-size: 18px; display: flex; align-items: center; justify-content: center;
+    }
+    .modal-body {
+      display: flex; flex: 1; overflow: hidden;
+    }
+
+    /* Left panel */
+    .panel-left {
+      width: 45%; border-right: 1px solid #f0f0f0;
+      display: flex; flex-direction: column; overflow-y: auto;
+    }
+    .drop-zone {
+      margin: 16px; border: 2px dashed #d1d5db; border-radius: 14px;
+      min-height: 200px; display: flex; flex-direction: column;
+      align-items: center; justify-content: center; cursor: pointer;
+      transition: border-color .2s, background .2s; position: relative; overflow: hidden;
+    }
+    .drop-zone:hover, .drop-zone.drag-over { border-color: #e94560; background: #fff5f7; }
+    .drop-zone input[type=file] {
+      position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%;
+    }
+    .drop-icon { font-size: 40px; margin-bottom: 8px; }
+    .drop-text { font-size: 13px; color: #6b7280; text-align: center; padding: 0 16px; }
+    .drop-preview { width: 100%; height: 100%; object-fit: cover; display: none; position: absolute; inset: 0; }
+    .form-area { padding: 0 16px 16px; }
+    .form-group { margin-bottom: 14px; }
+    .form-label { display: block; font-size: 12px; font-weight: 600; color: #374151; margin-bottom: 5px; }
+    .form-input, .form-select, .form-textarea {
+      width: 100%; border: 1.5px solid #e5e7eb; border-radius: 10px;
+      padding: 9px 12px; font-size: 13px; outline: none; font-family: inherit;
+      transition: border-color .15s;
+    }
+    .form-input:focus, .form-select:focus, .form-textarea:focus { border-color: #e94560; }
+    .form-textarea { resize: vertical; min-height: 72px; }
+
+    /* Right panel */
+    .panel-right {
+      flex: 1; display: flex; flex-direction: column; padding: 16px;
+    }
+    .panel-right-label { font-size: 12px; font-weight: 600; color: #374151; margin-bottom: 8px; }
+    #mini-map { flex: 1; border-radius: 12px; overflow: hidden; min-height: 260px; }
+    .coords-display {
+      margin-top: 8px; font-size: 12px; color: #6b7280;
+      background: #f8fafc; border-radius: 8px; padding: 8px 12px;
+      display: flex; justify-content: space-between;
+    }
+    .coords-hint { font-size: 11px; color: #9ca3af; margin-top: 4px; }
+
+    .modal-footer {
+      padding: 14px 20px; border-top: 1px solid #f0f0f0;
+      display: flex; gap: 10px; justify-content: flex-end;
+    }
+    .btn-cancel {
+      padding: 10px 20px; border-radius: 10px; border: 1.5px solid #e5e7eb;
+      background: #fff; cursor: pointer; font-size: 14px; font-weight: 600; color: #6b7280;
+    }
+    .btn-cancel:hover { background: #f9fafb; }
+    .btn-save {
+      padding: 10px 28px; border-radius: 10px; border: none;
+      background: #e94560; color: #fff; cursor: pointer; font-size: 14px; font-weight: 700;
+    }
+    .btn-save:hover { background: #c73652; }
+    .btn-save:disabled { background: #d1d5db; cursor: not-allowed; }
+
+    /* Marker pin */
+    .map-marker {
+      width: 32px; height: 32px; background: #e94560; border-radius: 50% 50% 50% 0;
+      transform: rotate(-45deg); border: 3px solid #fff;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.3); cursor: pointer;
+    }
+    .map-marker:hover { background: #c73652; transform: rotate(-45deg) scale(1.1); }
+
+    /* Toast */
+    #toast {
+      position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%);
+      background: #1a1a2e; color: #fff; padding: 12px 24px; border-radius: 50px;
+      font-size: 13px; z-index: 3000; display: none; white-space: nowrap;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+    }
+    #toast.show { display: block; animation: fadeup .3s ease; }
+    @keyframes fadeup { from { opacity:0; transform: translateX(-50%) translateY(8px); } to { opacity:1; transform: translateX(-50%) translateY(0); } }
+
+    @media (max-width: 640px) {
+      .modal-body { flex-direction: column; }
+      .panel-left { width: 100%; border-right: none; border-bottom: 1px solid #f0f0f0; max-height: 50vh; }
+      .home-btns { flex-direction: column; align-items: center; }
+      .btn-home { width: 80vw; max-width: 300px; flex-direction: row; justify-content: center; padding: 18px 24px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ╔═ LANDING ═══════════════════════════════════════════════════════════╗ -->
+<div id="view-home" class="view active">
+  <div class="home-logo">🗺️</div>
+  <h1 class="home-title">Photo Map</h1>
+  <p class="home-sub">撮影した写真を地図で管理・共有</p>
+  <div class="home-btns">
+    <button class="btn-home btn-home-map" onclick="showMap()">
+      <span class="icon">🗺️</span>
+      地図を見る
+    </button>
+    <button class="btn-home btn-home-upload" onclick="showMap(); openUpload()">
+      <span class="icon">📷</span>
+      写真を追加
+    </button>
+  </div>
+  <p class="home-count" id="home-count">読み込み中…</p>
+</div>
+
+<!-- ╔═ MAP VIEW ══════════════════════════════════════════════════════════╗ -->
+<div id="view-map" class="view">
+  <div class="map-header">
+    <button class="btn-back" onclick="showHome()">← ホーム</button>
+    <h1>📍 Photo Map</h1>
+    <span id="map-count" style="font-size:12px;color:rgba(255,255,255,0.5);"></span>
+  </div>
+  <div id="map"></div>
+  <button class="btn-add-float" onclick="openUpload()">＋ 写真を追加</button>
+</div>
+
+<!-- ╔═ LIGHTBOX ══════════════════════════════════════════════════════════╗ -->
+<div id="lightbox">
+  <button class="lightbox-close" onclick="closeLightbox()">✕</button>
+  <img class="lightbox-img" id="lb-img" src="" alt="">
+  <div class="lightbox-meta">
+    <div class="lightbox-meta-row">
+      <span class="meta-label">📅 日付</span>
+      <span class="meta-value" id="lb-date">—</span>
+    </div>
+    <div class="lightbox-meta-row">
+      <span class="meta-label">📍 住所</span>
+      <span class="meta-value" id="lb-address">—</span>
+    </div>
+    <div class="lightbox-meta-row">
+      <span class="meta-label">🏷️ 種別</span>
+      <span class="meta-value" id="lb-category">—</span>
+    </div>
+    <div class="lightbox-meta-row">
+      <span class="meta-label">💬 メモ</span>
+      <span class="meta-value" id="lb-comment">—</span>
+    </div>
+  </div>
+</div>
+
+<!-- ╔═ UPLOAD MODAL ══════════════════════════════════════════════════════╗ -->
+<div id="modal-upload">
+  <div class="modal-box">
+    <div class="modal-header">
+      <h2>📷 写真を追加</h2>
+      <button class="modal-close" onclick="closeUpload()">✕</button>
+    </div>
+    <div class="modal-body">
+      <!-- LEFT: Photo + Form -->
+      <div class="panel-left">
+        <div class="drop-zone" id="drop-zone">
+          <input type="file" id="file-input" accept="image/*">
+          <span class="drop-icon">🖼️</span>
+          <p class="drop-text">クリックまたはドラッグ＆ドロップで写真を選択</p>
+          <img class="drop-preview" id="drop-preview" alt="preview">
+        </div>
+        <div class="form-area">
+          <div class="form-group">
+            <label class="form-label">📍 住所・場所</label>
+            <input class="form-input" id="input-address" type="text" placeholder="例: ヌサンタラ、東カリマンタン州、インドネシア">
+          </div>
+          <div class="form-group">
+            <label class="form-label">🏷️ カテゴリー</label>
+            <select class="form-select" id="input-category">
+              <option value="">選択してください</option>
+              <option value="お客様">お客様</option>
+              <option value="政府・当局関係者">政府・当局関係者</option>
+              <option value="内部">内部</option>
+              <option value="プライベート">プライベート</option>
+              <option value="その他">その他</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">💬 コメント</label>
+            <textarea class="form-textarea" id="input-comment" placeholder="メモや説明を入力…"></textarea>
+          </div>
+        </div>
+      </div>
+      <!-- RIGHT: Mini Map -->
+      <div class="panel-right">
+        <p class="panel-right-label">🗺️ 地図をクリックして場所を指定</p>
+        <div id="mini-map"></div>
+        <div class="coords-display">
+          <span id="coords-lat">緯度: —</span>
+          <span id="coords-lng">経度: —</span>
+        </div>
+        <p class="coords-hint">📌 ピンをドラッグして位置を微調整できます</p>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-cancel" onclick="closeUpload()">キャンセル</button>
+      <button class="btn-save" id="btn-save" onclick="savePhoto()">💾 保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- ╔═ TOAST ══════════════════════════════════════════════════════════════╗ -->
+<div id="toast"></div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════
+// DATA LAYER – localStorage
+// ═══════════════════════════════════════════════════════════════
+const DB = {
+  KEY: 'photomap_v1',
+  load() { try { return JSON.parse(localStorage.getItem(this.KEY) || '[]'); } catch { return []; } },
+  save(photos) { localStorage.setItem(this.KEY, JSON.stringify(photos)); },
+  add(photo) { const list = this.load(); list.push(photo); this.save(list); return photo; }
+};
+
+// ═══════════════════════════════════════════════════════════════
+// CATEGORY HELPERS
+// ═══════════════════════════════════════════════════════════════
+const CAT_CLASS = {
+  'お客様': 'badge-customer',
+  '政府・当局関係者': 'badge-government',
+  '内部': 'badge-internal',
+  'プライベート': 'badge-private',
+  'その他': 'badge-other',
+};
+function badgeHTML(cat) {
+  const cls = CAT_CLASS[cat] || 'badge-other';
+  return `<span class="badge ${cls}">${cat || 'その他'}</span>`;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// VIEW NAVIGATION
+// ═══════════════════════════════════════════════════════════════
+function showHome() {
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.getElementById('view-home').classList.add('active');
+  updateHomeCount();
+}
+function showMap() {
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.getElementById('view-map').classList.add('active');
+  if (!mainMap) initMainMap();
+  else refreshMapMarkers();
+}
+function updateHomeCount() {
+  const n = DB.load().length;
+  document.getElementById('home-count').textContent = `現在 ${n} 枚の写真が登録されています`;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// MAIN MAP
+// ═══════════════════════════════════════════════════════════════
+let mainMap = null;
+const markers = [];
+
+function initMainMap() {
+  mainMap = new maplibregl.Map({
+    container: 'map',
+    style: {
+      version: 8,
+      sources: { osm: { type: 'raster', tiles: ['https://tile.openstreetmap.org/{z}/{x}/{y}.png'], tileSize: 256, attribution: '© OpenStreetMap contributors' } },
+      layers: [{ id: 'osm', type: 'raster', source: 'osm' }]
+    },
+    center: [117.0, -0.5],
+    zoom: 4
+  });
+  mainMap.addControl(new maplibregl.NavigationControl(), 'top-right');
+  mainMap.on('load', refreshMapMarkers);
+}
+
+function refreshMapMarkers() {
+  markers.forEach(m => m.remove());
+  markers.length = 0;
+  const photos = DB.load();
+  document.getElementById('map-count').textContent = `${photos.length} 枚`;
+  if (!photos.length) return;
+
+  photos.forEach(p => {
+    if (!p.lat || !p.lng) return;
+    const el = document.createElement('div');
+    el.className = 'map-marker';
+
+    const popup = new maplibregl.Popup({ offset: 20, maxWidth: '220px' })
+      .setHTML(`
+        <img class="popup-thumb" src="${p.thumbnail || p.full}" alt=""
+          onclick="openLightbox('${p.id}')" style="cursor:pointer">
+        <div class="popup-body">
+          <p class="popup-addr">${p.address || '住所未設定'}</p>
+          <div class="popup-meta">
+            <span class="popup-date">${p.date || '日付不明'}</span>
+            ${badgeHTML(p.category)}
+          </div>
+        </div>
+      `);
+
+    const m = new maplibregl.Marker({ element: el })
+      .setLngLat([p.lng, p.lat])
+      .setPopup(popup)
+      .addTo(mainMap);
+    markers.push(m);
+  });
+
+  // Fit bounds to all markers
+  if (photos.filter(p => p.lat && p.lng).length > 0) {
+    const lngs = photos.filter(p=>p.lng).map(p=>p.lng);
+    const lats = photos.filter(p=>p.lat).map(p=>p.lat);
+    mainMap.fitBounds(
+      [[Math.min(...lngs), Math.min(...lats)], [Math.max(...lngs), Math.max(...lats)]],
+      { padding: 60, maxZoom: 14, duration: 800 }
+    );
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// LIGHTBOX
+// ═══════════════════════════════════════════════════════════════
+function openLightbox(id) {
+  const photo = DB.load().find(p => p.id === id);
+  if (!photo) return;
+  document.getElementById('lb-img').src = photo.full;
+  document.getElementById('lb-date').textContent = photo.date || '不明';
+  document.getElementById('lb-address').textContent = photo.address || '未設定';
+  document.getElementById('lb-category').innerHTML = badgeHTML(photo.category);
+  document.getElementById('lb-comment').textContent = photo.comment || '—';
+  document.getElementById('lightbox').classList.add('open');
+}
+function closeLightbox() {
+  document.getElementById('lightbox').classList.remove('open');
+}
+document.getElementById('lightbox').addEventListener('click', e => {
+  if (e.target === document.getElementById('lightbox')) closeLightbox();
+});
+
+// ═══════════════════════════════════════════════════════════════
+// UPLOAD MODAL
+// ═══════════════════════════════════════════════════════════════
+let miniMap = null, miniMarker = null;
+let selectedLat = null, selectedLng = null;
+let selectedFile = null, fullBase64 = null, thumbBase64 = null;
+
+function openUpload() {
+  document.getElementById('modal-upload').classList.add('open');
+  setTimeout(() => {
+    if (!miniMap) initMiniMap();
+    else miniMap.resize();
+  }, 100);
+}
+function closeUpload() {
+  document.getElementById('modal-upload').classList.remove('open');
+}
+
+function initMiniMap() {
+  miniMap = new maplibregl.Map({
+    container: 'mini-map',
+    style: {
+      version: 8,
+      sources: { osm: { type: 'raster', tiles: ['https://tile.openstreetmap.org/{z}/{x}/{y}.png'], tileSize: 256, attribution: '© OpenStreetMap contributors' } },
+      layers: [{ id: 'osm', type: 'raster', source: 'osm' }]
+    },
+    center: [117.0, -0.5],
+    zoom: 4
+  });
+  miniMap.addControl(new maplibregl.NavigationControl(), 'top-right');
+  miniMap.on('click', e => {
+    placePin(e.lngLat.lat, e.lngLat.lng);
+  });
+}
+
+function placePin(lat, lng) {
+  selectedLat = lat; selectedLng = lng;
+  document.getElementById('coords-lat').textContent = `緯度: ${lat.toFixed(6)}`;
+  document.getElementById('coords-lng').textContent = `経度: ${lng.toFixed(6)}`;
+  if (miniMarker) miniMarker.remove();
+  const el = document.createElement('div');
+  el.className = 'map-marker';
+  miniMarker = new maplibregl.Marker({ element: el, draggable: true })
+    .setLngLat([lng, lat])
+    .addTo(miniMap);
+  miniMarker.on('dragend', () => {
+    const pos = miniMarker.getLngLat();
+    selectedLat = pos.lat; selectedLng = pos.lng;
+    document.getElementById('coords-lat').textContent = `緯度: ${pos.lat.toFixed(6)}`;
+    document.getElementById('coords-lng').textContent = `経度: ${pos.lng.toFixed(6)}`;
+  });
+}
+
+// ── File handling ──
+const dropZone = document.getElementById('drop-zone');
+const fileInput = document.getElementById('file-input');
+
+dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+dropZone.addEventListener('drop', e => {
+  e.preventDefault(); dropZone.classList.remove('drag-over');
+  if (e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]);
+});
+fileInput.addEventListener('change', () => { if (fileInput.files[0]) handleFile(fileInput.files[0]); });
+
+function handleFile(file) {
+  selectedFile = file;
+  const reader = new FileReader();
+  reader.onload = async e => {
+    fullBase64 = e.target.result;
+    const preview = document.getElementById('drop-preview');
+    preview.src = fullBase64;
+    preview.style.display = 'block';
+    document.querySelector('.drop-icon').style.display = 'none';
+    document.querySelector('.drop-text').style.display = 'none';
+    thumbBase64 = await makeThumbnail(fullBase64, 300);
+  };
+  reader.readAsDataURL(file);
+}
+
+function makeThumbnail(dataUrl, maxW) {
+  return new Promise(resolve => {
+    const img = new Image();
+    img.onload = () => {
+      const scale = Math.min(maxW / img.width, 1);
+      const canvas = document.createElement('canvas');
+      canvas.width = img.width * scale;
+      canvas.height = img.height * scale;
+      canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+      resolve(canvas.toDataURL('image/jpeg', 0.82));
+    };
+    img.src = dataUrl;
+  });
+}
+
+function getDateStr(file) {
+  const d = new Date(file.lastModified || Date.now());
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+
+// ── Save ──
+function savePhoto() {
+  if (!fullBase64) { showToast('⚠️ 写真を選択してください'); return; }
+  if (!selectedLat) { showToast('⚠️ 地図をクリックして場所を指定してください'); return; }
+  if (!document.getElementById('input-category').value) { showToast('⚠️ カテゴリーを選択してください'); return; }
+
+  const photo = {
+    id: 'p' + Date.now(),
+    full: fullBase64,
+    thumbnail: thumbBase64 || fullBase64,
+    date: getDateStr(selectedFile),
+    address: document.getElementById('input-address').value.trim() || '住所未設定',
+    category: document.getElementById('input-category').value,
+    comment: document.getElementById('input-comment').value.trim(),
+    lat: selectedLat,
+    lng: selectedLng
+  };
+  DB.add(photo);
+  showToast('✅ 写真を保存しました');
+  closeUpload();
+  resetUploadForm();
+  if (mainMap) refreshMapMarkers();
+  updateHomeCount();
+}
+
+function resetUploadForm() {
+  selectedFile = null; fullBase64 = null; thumbBase64 = null;
+  selectedLat = null; selectedLng = null;
+  document.getElementById('drop-preview').style.display = 'none';
+  document.querySelector('.drop-icon').style.display = '';
+  document.querySelector('.drop-text').style.display = '';
+  document.getElementById('input-address').value = '';
+  document.getElementById('input-category').value = '';
+  document.getElementById('input-comment').value = '';
+  document.getElementById('coords-lat').textContent = '緯度: —';
+  document.getElementById('coords-lng').textContent = '経度: —';
+  document.getElementById('file-input').value = '';
+  if (miniMarker) { miniMarker.remove(); miniMarker = null; }
+}
+
+// ── Toast ──
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2800);
+}
+
+// ── Keyboard ──
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') { closeLightbox(); closeUpload(); }
+});
+
+// ── Init ──
+updateHomeCount();
+</script>
+</body>
+</html>
