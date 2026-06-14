@@ -154,6 +154,35 @@
       width: 40px; height: 40px; display: flex; align-items: center; justify-content: center;
     }
     .lightbox-close:hover { background: rgba(255,255,255,0.25); }
+    .lightbox-actions { display: flex; gap: 10px; margin-top: 14px; }
+    .btn-edit-lb {
+      flex: 1; padding: 10px; border-radius: 12px; border: none; cursor: pointer;
+      font-size: 13px; font-weight: 700;
+    }
+    .btn-edit-lb-edit { background: #e94560; color: #fff; }
+    .btn-edit-lb-edit:hover { background: #c73652; }
+    .btn-edit-lb-delete { background: rgba(255,255,255,0.1); color: rgba(255,255,255,0.7); }
+    .btn-edit-lb-delete:hover { background: rgba(255,100,100,0.25); color: #fca5a5; }
+
+    /* ── Edit Modal ── */
+    #modal-edit {
+      display: none; position: fixed; inset: 0; z-index: 2500;
+      background: rgba(0,0,0,0.7); align-items: center; justify-content: center; padding: 16px;
+    }
+    #modal-edit.open { display: flex; }
+    .edit-box {
+      background: #fff; border-radius: 20px; width: 100%; max-width: 460px;
+      box-shadow: 0 24px 64px rgba(0,0,0,0.4);
+    }
+    .edit-header {
+      display: flex; align-items: center; padding: 16px 20px; border-bottom: 1px solid #f0f0f0;
+    }
+    .edit-header h2 { font-size: 16px; font-weight: 700; flex: 1; }
+    .edit-body { padding: 20px; display: flex; flex-direction: column; gap: 14px; }
+    .edit-footer {
+      padding: 14px 20px; border-top: 1px solid #f0f0f0;
+      display: flex; gap: 10px; justify-content: flex-end;
+    }
 
     /* ── Upload Modal ── */
     #modal-upload {
@@ -330,6 +359,45 @@
       <span class="meta-label">💬 メモ</span>
       <span class="meta-value" id="lb-comment">—</span>
     </div>
+    <div class="lightbox-actions">
+      <button class="btn-edit-lb btn-edit-lb-edit" onclick="openEdit()">✏️ 編集</button>
+      <button class="btn-edit-lb btn-edit-lb-delete" onclick="deletePhoto()">🗑️ 削除</button>
+    </div>
+  </div>
+</div>
+
+<!-- ╔═ EDIT MODAL ════════════════════════════════════════════════════════╗ -->
+<div id="modal-edit">
+  <div class="edit-box">
+    <div class="edit-header">
+      <h2>✏️ 登録情報を編集</h2>
+      <button class="modal-close" onclick="closeEdit()">✕</button>
+    </div>
+    <div class="edit-body">
+      <div class="form-group">
+        <label class="form-label">📍 住所・場所</label>
+        <input class="form-input" id="edit-address" type="text">
+      </div>
+      <div class="form-group">
+        <label class="form-label">🏷️ カテゴリー</label>
+        <select class="form-select" id="edit-category">
+          <option value="">選択してください</option>
+          <option value="お客様">お客様</option>
+          <option value="政府・当局関係者">政府・当局関係者</option>
+          <option value="内部">内部</option>
+          <option value="プライベート">プライベート</option>
+          <option value="その他">その他</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">💬 コメント</label>
+        <textarea class="form-textarea" id="edit-comment"></textarea>
+      </div>
+    </div>
+    <div class="edit-footer">
+      <button class="btn-cancel" onclick="closeEdit()">キャンセル</button>
+      <button class="btn-save" onclick="saveEdit()">💾 保存</button>
+    </div>
   </div>
 </div>
 
@@ -504,9 +572,12 @@ function refreshMapMarkers() {
 // ═══════════════════════════════════════════════════════════════
 // LIGHTBOX
 // ═══════════════════════════════════════════════════════════════
+let currentPhotoId = null;
+
 function openLightbox(id) {
   const photo = DB.load().find(p => p.id === id);
   if (!photo) return;
+  currentPhotoId = id;
   document.getElementById('lb-img').src = photo.full;
   document.getElementById('lb-date').textContent = photo.date || '不明';
   document.getElementById('lb-address').textContent = photo.address || '未設定';
@@ -516,10 +587,52 @@ function openLightbox(id) {
 }
 function closeLightbox() {
   document.getElementById('lightbox').classList.remove('open');
+  currentPhotoId = null;
 }
 document.getElementById('lightbox').addEventListener('click', e => {
   if (e.target === document.getElementById('lightbox')) closeLightbox();
 });
+
+// ═══════════════════════════════════════════════════════════════
+// EDIT
+// ═══════════════════════════════════════════════════════════════
+function openEdit() {
+  if (!currentPhotoId) return;
+  const photo = DB.load().find(p => p.id === currentPhotoId);
+  if (!photo) return;
+  document.getElementById('edit-address').value = photo.address || '';
+  document.getElementById('edit-category').value = photo.category || '';
+  document.getElementById('edit-comment').value = photo.comment || '';
+  document.getElementById('modal-edit').classList.add('open');
+}
+function closeEdit() {
+  document.getElementById('modal-edit').classList.remove('open');
+}
+function saveEdit() {
+  if (!currentPhotoId) return;
+  const photos = DB.load();
+  const idx = photos.findIndex(p => p.id === currentPhotoId);
+  if (idx === -1) return;
+  photos[idx].address  = document.getElementById('edit-address').value.trim() || '住所未設定';
+  photos[idx].category = document.getElementById('edit-category').value;
+  photos[idx].comment  = document.getElementById('edit-comment').value.trim();
+  DB.save(photos);
+  // Refresh lightbox display
+  openLightbox(currentPhotoId);
+  closeEdit();
+  if (mainMap) refreshMapMarkers();
+  showToast('✅ 更新しました');
+}
+function deletePhoto() {
+  if (!currentPhotoId) return;
+  if (!confirm('この写真を削除しますか？')) return;
+  const photos = DB.load().filter(p => p.id !== currentPhotoId);
+  DB.save(photos);
+  closeLightbox();
+  if (mainMap) refreshMapMarkers();
+  updateHomeCount();
+  showToast('🗑️ 削除しました');
+}
 
 // ═══════════════════════════════════════════════════════════════
 // UPLOAD MODAL
@@ -556,6 +669,17 @@ function initMiniMap() {
   });
 }
 
+async function reverseGeocode(lat, lng) {
+  try {
+    const res = await fetch(
+      `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&accept-language=ja`,
+      { headers: { 'Accept-Language': 'ja' } }
+    );
+    const data = await res.json();
+    return data.display_name || '';
+  } catch { return ''; }
+}
+
 function placePin(lat, lng) {
   selectedLat = lat; selectedLng = lng;
   document.getElementById('coords-lat').textContent = `緯度: ${lat.toFixed(6)}`;
@@ -566,11 +690,17 @@ function placePin(lat, lng) {
   miniMarker = new maplibregl.Marker({ element: el, draggable: true })
     .setLngLat([lng, lat])
     .addTo(miniMap);
-  miniMarker.on('dragend', () => {
+  miniMarker.on('dragend', async () => {
     const pos = miniMarker.getLngLat();
     selectedLat = pos.lat; selectedLng = pos.lng;
     document.getElementById('coords-lat').textContent = `緯度: ${pos.lat.toFixed(6)}`;
     document.getElementById('coords-lng').textContent = `経度: ${pos.lng.toFixed(6)}`;
+    const addr = await reverseGeocode(pos.lat, pos.lng);
+    if (addr) document.getElementById('input-address').value = addr;
+  });
+  // Auto-fill address
+  reverseGeocode(lat, lng).then(addr => {
+    if (addr) document.getElementById('input-address').value = addr;
   });
 }
 
