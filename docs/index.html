@@ -501,13 +501,71 @@
 
 <script>
 // ═══════════════════════════════════════════════════════════════
-// DATA LAYER – localStorage
+// DATA LAYER – IndexedDB（容量大：数百MB〜GB）
 // ═══════════════════════════════════════════════════════════════
 const DB = {
-  KEY: 'photomap_v1',
-  load() { try { return JSON.parse(localStorage.getItem(this.KEY) || '[]'); } catch { return []; } },
-  save(photos) { localStorage.setItem(this.KEY, JSON.stringify(photos)); },
-  add(photo) { const list = this.load(); list.push(photo); this.save(list); return photo; }
+  _db: null,
+  open() {
+    return new Promise((resolve, reject) => {
+      if (this._db) return resolve(this._db);
+      const req = indexedDB.open('photomap_v2', 1);
+      req.onupgradeneeded = e => {
+        const db = e.target.result;
+        if (!db.objectStoreNames.contains('photos')) {
+          db.createObjectStore('photos', { keyPath: 'id' });
+        }
+      };
+      req.onsuccess = e => { this._db = e.target.result; resolve(this._db); };
+      req.onerror = () => reject(req.error);
+    });
+  },
+  async load() {
+    const db = await this.open();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction('photos', 'readonly');
+      const req = tx.objectStore('photos').getAll();
+      req.onsuccess = () => resolve(req.result || []);
+      req.onerror = () => reject(req.error);
+    });
+  },
+  async add(photo) {
+    const db = await this.open();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction('photos', 'readwrite');
+      const req = tx.objectStore('photos').add(photo);
+      req.onsuccess = () => resolve(photo);
+      req.onerror = () => reject(req.error);
+    });
+  },
+  async update(photo) {
+    const db = await this.open();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction('photos', 'readwrite');
+      const req = tx.objectStore('photos').put(photo);
+      req.onsuccess = () => resolve(photo);
+      req.onerror = () => reject(req.error);
+    });
+  },
+  async delete(id) {
+    const db = await this.open();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction('photos', 'readwrite');
+      const req = tx.objectStore('photos').delete(id);
+      req.onsuccess = () => resolve();
+      req.onerror = () => reject(req.error);
+    });
+  },
+  // 旧localStorageデータを移行
+  async migrate() {
+    const old = localStorage.getItem('photomap_v1');
+    if (!old) return;
+    try {
+      const photos = JSON.parse(old);
+      for (const p of photos) await this.add(p).catch(() => {});
+      localStorage.removeItem('photomap_v1');
+      console.log('旧データを移行しました');
+    } catch (e) { console.warn('移行エラー:', e); }
+  }
 };
 
 // ═══════════════════════════════════════════════════════════════
@@ -539,9 +597,9 @@ function showMap() {
   if (!mainMap) initMainMap();
   else refreshMapMarkers();
 }
-function updateHomeCount() {
-  const n = DB.load().length;
-  document.getElementById('home-count').textContent = `現在 ${n} 枚の写真が登録されています`;
+async function updateHomeCount() {
+  const photos = await DB.load();
+  document.getElementById('home-count').textContent = `現在 ${photos.length} 枚の写真が登録されています`;
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -567,11 +625,12 @@ function initMainMap() {
 
 function locKey(p) { return `${(+p.lat).toFixed(5)}_${(+p.lng).toFixed(5)}`; }
 
-function refreshMapMarkers() {
+async function refreshMapMarkers() {
   markers.forEach(m => m.remove());
   markers.length = 0;
-  const photos = DB.load().filter(p => p.lat && p.lng);
-  document.getElementById('map-count').textContent = `${DB.load().length} 枚`;
+  const all = await DB.load();
+  const photos = all.filter(p => p.lat && p.lng);
+  document.getElementById('map-count').textContent = `${all.length} 枚`;
   if (!photos.length) return;
 
   // Group by location
@@ -640,8 +699,9 @@ function refreshMapMarkers() {
 // ═══════════════════════════════════════════════════════════════
 let currentPhotoId = null;
 
-function openLightbox(id) {
-  const photo = DB.load().find(p => p.id === id);
+async function openLightbox(id) {
+  const all = await DB.load();
+  const photo = all.find(p => p.id === id);
   if (!photo) return;
   currentPhotoId = id;
   document.getElementById('lb-img').src = photo.full;
@@ -665,9 +725,10 @@ document.getElementById('lightbox').addEventListener('click', e => {
 let editMap = null, editMarker = null;
 let editLat = null, editLng = null;
 
-function openEdit() {
+async function openEdit() {
   if (!currentPhotoId) return;
-  const photo = DB.load().find(p => p.id === currentPhotoId);
+  const all = await DB.load();
+  const photo = all.find(p => p.id === currentPhotoId);
   if (!photo) return;
   editLat = photo.lat; editLng = photo.lng;
   document.getElementById('edit-address').value = photo.address || '';
@@ -725,26 +786,25 @@ function placEditPin(lat, lng, geocode = true) {
 function closeEdit() {
   document.getElementById('modal-edit').classList.remove('open');
 }
-function saveEdit() {
+async function saveEdit() {
   if (!currentPhotoId) return;
-  const photos = DB.load();
-  const idx = photos.findIndex(p => p.id === currentPhotoId);
-  if (idx === -1) return;
-  photos[idx].address  = document.getElementById('edit-address').value.trim() || '住所未設定';
-  photos[idx].category = document.getElementById('edit-category').value;
-  photos[idx].comment  = document.getElementById('edit-comment').value.trim();
-  if (editLat) { photos[idx].lat = editLat; photos[idx].lng = editLng; }
-  DB.save(photos);
+  const all = await DB.load();
+  const photo = all.find(p => p.id === currentPhotoId);
+  if (!photo) return;
+  photo.address  = document.getElementById('edit-address').value.trim() || '住所未設定';
+  photo.category = document.getElementById('edit-category').value;
+  photo.comment  = document.getElementById('edit-comment').value.trim();
+  if (editLat) { photo.lat = editLat; photo.lng = editLng; }
+  await DB.update(photo);
   openLightbox(currentPhotoId);
   closeEdit();
   if (mainMap) refreshMapMarkers();
   showToast('✅ 更新しました');
 }
-function deletePhoto() {
+async function deletePhoto() {
   if (!currentPhotoId) return;
   if (!confirm('この写真を削除しますか？')) return;
-  const photos = DB.load().filter(p => p.id !== currentPhotoId);
-  DB.save(photos);
+  await DB.delete(currentPhotoId);
   closeLightbox();
   if (mainMap) refreshMapMarkers();
   updateHomeCount();
@@ -921,14 +981,14 @@ async function savePhoto() {
     lng: selectedLng
   };
   try {
-    DB.add(photo);
+    await DB.add(photo);
     showToast('✅ 写真を保存しました');
     closeUpload();
     resetUploadForm();
     if (mainMap) refreshMapMarkers();
     updateHomeCount();
   } catch (e) {
-    showToast('⚠️ 容量不足です。写真が多すぎる可能性があります');
+    showToast('⚠️ 保存に失敗しました: ' + (e.message || e));
     console.error(e);
   } finally {
     btn.disabled = false; btn.textContent = '💾 保存';
@@ -984,11 +1044,14 @@ function checkPassword() {
 }
 
 // ── Init ──
-if (sessionStorage.getItem(SESSION_KEY) === '1') {
-  document.getElementById('view-password').style.display = 'none';
-  document.getElementById('view-home').classList.add('active');
-  updateHomeCount();
-}
+(async () => {
+  await DB.migrate(); // 旧localStorageデータをIndexedDBへ移行
+  if (sessionStorage.getItem(SESSION_KEY) === '1') {
+    document.getElementById('view-password').style.display = 'none';
+    document.getElementById('view-home').classList.add('active');
+    updateHomeCount();
+  }
+})();
 </script>
 </body>
 </html>
