@@ -868,27 +868,28 @@ function handleFile(file) {
   selectedFile = file;
   const reader = new FileReader();
   reader.onload = async e => {
-    fullBase64 = e.target.result;
     const preview = document.getElementById('drop-preview');
-    preview.src = fullBase64;
+    preview.src = e.target.result;
     preview.style.display = 'block';
     document.querySelector('.drop-icon').style.display = 'none';
     document.querySelector('.drop-text').style.display = 'none';
-    thumbBase64 = await makeThumbnail(fullBase64, 300);
+    // Compress full image to max 1600px / quality 0.85 to fit localStorage
+    fullBase64 = await makeThumbnail(e.target.result, 1600, 0.85);
+    thumbBase64 = await makeThumbnail(e.target.result, 300, 0.82);
   };
   reader.readAsDataURL(file);
 }
 
-function makeThumbnail(dataUrl, maxW) {
+function makeThumbnail(dataUrl, maxW, quality = 0.82) {
   return new Promise(resolve => {
     const img = new Image();
     img.onload = () => {
       const scale = Math.min(maxW / img.width, 1);
       const canvas = document.createElement('canvas');
-      canvas.width = img.width * scale;
-      canvas.height = img.height * scale;
+      canvas.width = Math.round(img.width * scale);
+      canvas.height = Math.round(img.height * scale);
       canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
-      resolve(canvas.toDataURL('image/jpeg', 0.82));
+      resolve(canvas.toDataURL('image/jpeg', quality));
     };
     img.src = dataUrl;
   });
@@ -900,10 +901,13 @@ function getDateStr(file) {
 }
 
 // ── Save ──
-function savePhoto() {
+async function savePhoto() {
   if (!fullBase64) { showToast('⚠️ 写真を選択してください'); return; }
   if (!selectedLat) { showToast('⚠️ 地図をクリックして場所を指定してください'); return; }
   if (!document.getElementById('input-category').value) { showToast('⚠️ カテゴリーを選択してください'); return; }
+
+  const btn = document.getElementById('btn-save');
+  btn.disabled = true; btn.textContent = '保存中…';
 
   const photo = {
     id: 'p' + Date.now(),
@@ -916,12 +920,19 @@ function savePhoto() {
     lat: selectedLat,
     lng: selectedLng
   };
-  DB.add(photo);
-  showToast('✅ 写真を保存しました');
-  closeUpload();
-  resetUploadForm();
-  if (mainMap) refreshMapMarkers();
-  updateHomeCount();
+  try {
+    DB.add(photo);
+    showToast('✅ 写真を保存しました');
+    closeUpload();
+    resetUploadForm();
+    if (mainMap) refreshMapMarkers();
+    updateHomeCount();
+  } catch (e) {
+    showToast('⚠️ 容量不足です。写真が多すぎる可能性があります');
+    console.error(e);
+  } finally {
+    btn.disabled = false; btn.textContent = '💾 保存';
+  }
 }
 
 function resetUploadForm() {
