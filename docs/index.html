@@ -171,7 +171,7 @@
     }
     #modal-edit.open { display: flex; }
     .edit-box {
-      background: #fff; border-radius: 20px; width: 100%; max-width: 460px;
+      background: #fff; border-radius: 20px; width: 100%; max-width: 560px;
       box-shadow: 0 24px 64px rgba(0,0,0,0.4);
     }
     .edit-header {
@@ -374,6 +374,14 @@
       <button class="modal-close" onclick="closeEdit()">✕</button>
     </div>
     <div class="edit-body">
+      <div class="form-group">
+        <label class="form-label">🗺️ 場所（地図をクリックして変更）</label>
+        <div id="edit-mini-map" style="height:220px;border-radius:12px;overflow:hidden;margin-bottom:6px;"></div>
+        <div class="coords-display" id="edit-coords-display">
+          <span id="edit-coords-lat">緯度: —</span>
+          <span id="edit-coords-lng">経度: —</span>
+        </div>
+      </div>
       <div class="form-group">
         <label class="form-label">📍 住所・場所</label>
         <input class="form-input" id="edit-address" type="text">
@@ -596,15 +604,66 @@ document.getElementById('lightbox').addEventListener('click', e => {
 // ═══════════════════════════════════════════════════════════════
 // EDIT
 // ═══════════════════════════════════════════════════════════════
+let editMap = null, editMarker = null;
+let editLat = null, editLng = null;
+
 function openEdit() {
   if (!currentPhotoId) return;
   const photo = DB.load().find(p => p.id === currentPhotoId);
   if (!photo) return;
+  editLat = photo.lat; editLng = photo.lng;
   document.getElementById('edit-address').value = photo.address || '';
   document.getElementById('edit-category').value = photo.category || '';
   document.getElementById('edit-comment').value = photo.comment || '';
   document.getElementById('modal-edit').classList.add('open');
+
+  setTimeout(() => {
+    if (!editMap) {
+      editMap = new maplibregl.Map({
+        container: 'edit-mini-map',
+        style: {
+          version: 8,
+          sources: { osm: { type: 'raster', tiles: ['https://tile.openstreetmap.org/{z}/{x}/{y}.png'], tileSize: 256, attribution: '© OpenStreetMap contributors' } },
+          layers: [{ id: 'osm', type: 'raster', source: 'osm' }]
+        },
+        center: [editLng || 117, editLat || -0.5],
+        zoom: editLat ? 12 : 4
+      });
+      editMap.addControl(new maplibregl.NavigationControl(), 'top-right');
+      editMap.on('click', e => placEditPin(e.lngLat.lat, e.lngLat.lng));
+    } else {
+      editMap.resize();
+      if (editLat) editMap.flyTo({ center: [editLng, editLat], zoom: 12 });
+    }
+    if (editLat) placEditPin(editLat, editLng, false);
+  }, 100);
 }
+
+function placEditPin(lat, lng, geocode = true) {
+  editLat = lat; editLng = lng;
+  document.getElementById('edit-coords-lat').textContent = `緯度: ${lat.toFixed(6)}`;
+  document.getElementById('edit-coords-lng').textContent = `経度: ${lng.toFixed(6)}`;
+  if (editMarker) editMarker.remove();
+  const el = document.createElement('div');
+  el.className = 'map-marker';
+  editMarker = new maplibregl.Marker({ element: el, draggable: true })
+    .setLngLat([lng, lat])
+    .addTo(editMap);
+  editMarker.on('dragend', async () => {
+    const pos = editMarker.getLngLat();
+    editLat = pos.lat; editLng = pos.lng;
+    document.getElementById('edit-coords-lat').textContent = `緯度: ${pos.lat.toFixed(6)}`;
+    document.getElementById('edit-coords-lng').textContent = `経度: ${pos.lng.toFixed(6)}`;
+    const addr = await reverseGeocode(pos.lat, pos.lng);
+    if (addr) document.getElementById('edit-address').value = addr;
+  });
+  if (geocode) {
+    reverseGeocode(lat, lng).then(addr => {
+      if (addr) document.getElementById('edit-address').value = addr;
+    });
+  }
+}
+
 function closeEdit() {
   document.getElementById('modal-edit').classList.remove('open');
 }
@@ -616,8 +675,8 @@ function saveEdit() {
   photos[idx].address  = document.getElementById('edit-address').value.trim() || '住所未設定';
   photos[idx].category = document.getElementById('edit-category').value;
   photos[idx].comment  = document.getElementById('edit-comment').value.trim();
+  if (editLat) { photos[idx].lat = editLat; photos[idx].lng = editLng; }
   DB.save(photos);
-  // Refresh lightbox display
   openLightbox(currentPhotoId);
   closeEdit();
   if (mainMap) refreshMapMarkers();
