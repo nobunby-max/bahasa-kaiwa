@@ -132,8 +132,24 @@
       display: none; position: fixed; inset: 0; z-index: 2000;
       background: rgba(0,0,0,0.92); flex-direction: column;
       align-items: center; justify-content: center; padding: 20px;
+      transition: background .2s;
     }
     #lightbox.open { display: flex; }
+    #lightbox.drag-over { background: rgba(233,69,96,0.55); }
+    .lb-drop-hint {
+      display: none; position: absolute; inset: 0;
+      align-items: center; justify-content: center; flex-direction: column; gap: 12px;
+      pointer-events: none;
+    }
+    #lightbox.drag-over .lb-drop-hint { display: flex; }
+    .lb-drop-hint-icon { font-size: 64px; }
+    .lb-drop-hint-text { font-size: 18px; font-weight: 700; color: #fff; }
+    /* 追加中プログレスバー */
+    #lb-progress {
+      display: none; position: absolute; bottom: 24px; left: 50%; transform: translateX(-50%);
+      background: rgba(255,255,255,0.12); border-radius: 50px; padding: 10px 24px;
+      color: #fff; font-size: 13px; font-weight: 600; white-space: nowrap;
+    }
     .lightbox-img {
       max-width: 100%; max-height: 60vh; object-fit: contain;
       border-radius: 8px; box-shadow: 0 8px 40px rgba(0,0,0,0.5);
@@ -365,6 +381,12 @@
 
 <!-- ╔═ LIGHTBOX ══════════════════════════════════════════════════════════════════╗ -->
 <div id="lightbox">
+  <!-- ドラッグ時のオーバーレイ -->
+  <div class="lb-drop-hint">
+    <span class="lb-drop-hint-icon">📸</span>
+    <span class="lb-drop-hint-text">ここにドロップして同じ場所に追加</span>
+  </div>
+  <div id="lb-progress">追加中… 0/0</div>
   <button class="lightbox-close" onclick="closeLightbox()">✕</button>
   <img class="lightbox-img" id="lb-img" src="" alt="">
   <div class="lightbox-meta">
@@ -750,6 +772,57 @@ function closeLightbox() {
 }
 document.getElementById('lightbox').addEventListener('click', e => {
   if (e.target === document.getElementById('lightbox')) closeLightbox();
+});
+
+// ── ライトボックスへのドラッグ＆ドロップで同じ場所に写真を追加 ──
+const lb = document.getElementById('lightbox');
+lb.addEventListener('dragover', e => { e.preventDefault(); lb.classList.add('drag-over'); });
+lb.addEventListener('dragleave', e => { if (!lb.contains(e.relatedTarget)) lb.classList.remove('drag-over'); });
+lb.addEventListener('drop', async e => {
+  e.preventDefault();
+  lb.classList.remove('drag-over');
+  if (!currentPhotoId) return;
+
+  const files = Array.from(e.dataTransfer.files).filter(f => f.type.startsWith('image/'));
+  if (!files.length) return;
+
+  // 現在表示中の写真からメタデータをコピー
+  const all = await DB.load();
+  const src = all.find(p => p.id === currentPhotoId);
+  if (!src) return;
+
+  const prog = document.getElementById('lb-progress');
+  prog.style.display = 'block';
+  let done = 0;
+  prog.textContent = `追加中… ${done}/${files.length}`;
+
+  for (const file of files) {
+    const exifDate = (await getExifDate(file)) || getDateStr(file);
+    const dataUrl = await new Promise(r => {
+      const reader = new FileReader();
+      reader.onload = e2 => r(e2.target.result);
+      reader.readAsDataURL(file);
+    });
+    const full = await makeThumbnail(dataUrl, 1600, 0.85);
+    const thumbnail = await makeThumbnail(dataUrl, 300, 0.82);
+    await DB.add({
+      id: 'p' + Date.now() + Math.random().toString(36).slice(2),
+      full, thumbnail,
+      date: exifDate,
+      address: src.address,
+      category: src.category,
+      comment: src.comment,
+      lat: src.lat,
+      lng: src.lng
+    });
+    done++;
+    prog.textContent = `追加中… ${done}/${files.length}`;
+  }
+
+  prog.textContent = `✅ ${files.length}枚を追加しました`;
+  setTimeout(() => { prog.style.display = 'none'; }, 2000);
+  if (mainMap) refreshMapMarkers();
+  updateHomeCount();
 });
 
 // ═══════════════════════════════════════════════════════════════
