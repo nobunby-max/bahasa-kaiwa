@@ -177,6 +177,8 @@
     }
     .btn-edit-lb-edit { background: #e94560; color: #fff; }
     .btn-edit-lb-edit:hover { background: #c73652; }
+    .btn-edit-lb-add { background: rgba(255,255,255,0.15); color: #fff; }
+    .btn-edit-lb-add:hover { background: rgba(255,255,255,0.25); }
     .btn-edit-lb-delete { background: rgba(255,255,255,0.1); color: rgba(255,255,255,0.7); }
     .btn-edit-lb-delete:hover { background: rgba(255,100,100,0.25); color: #fca5a5; }
 
@@ -408,8 +410,10 @@
     </div>
     <div class="lightbox-actions">
       <button class="btn-edit-lb btn-edit-lb-edit" onclick="openEdit()">✏️ 編集</button>
+      <button class="btn-edit-lb btn-edit-lb-add" onclick="document.getElementById('lb-file-input').click()">📷 写真を追加</button>
       <button class="btn-edit-lb btn-edit-lb-delete" onclick="deletePhoto()">🗑️ 削除</button>
     </div>
+    <input type="file" id="lb-file-input" accept="image/*" multiple style="display:none">
   </div>
 </div>
 
@@ -774,28 +778,44 @@ document.getElementById('lightbox').addEventListener('click', e => {
   if (e.target === document.getElementById('lightbox')) closeLightbox();
 });
 
-// ── ページ全体でドロップによるナビゲーションを防ぐ（Safariで重要） ──
-document.addEventListener('dragover', e => e.preventDefault());
-document.addEventListener('drop', e => e.preventDefault());
+// ── ライトボックスの「写真を追加」ボタン（ファイル選択） ──
+document.getElementById('lb-file-input').addEventListener('change', async e => {
+  const files = Array.from(e.target.files).filter(f => f.type.startsWith('image/'));
+  e.target.value = '';
+  if (!files.length || !currentPhotoId) return;
+  const all = await DB.load();
+  const src = all.find(p => p.id === currentPhotoId);
+  if (!src) return;
+  const prog = document.getElementById('lb-progress');
+  prog.style.display = 'block';
+  let done = 0;
+  prog.textContent = `追加中… ${done}/${files.length}`;
+  for (const file of files) {
+    const exifDate = (await getExifDate(file)) || getDateStr(file);
+    const dataUrl = await new Promise(r => { const rd = new FileReader(); rd.onload = ev => r(ev.target.result); rd.readAsDataURL(file); });
+    const full = await makeThumbnail(dataUrl, 1600, 0.85);
+    const thumbnail = await makeThumbnail(dataUrl, 300, 0.82);
+    await DB.add({ id: 'p' + Date.now() + Math.random().toString(36).slice(2), full, thumbnail, date: exifDate, address: src.address, category: src.category, comment: src.comment, lat: src.lat, lng: src.lng });
+    done++;
+    prog.textContent = `追加中… ${done}/${files.length}`;
+  }
+  prog.textContent = `✅ ${files.length}枚を追加しました`;
+  setTimeout(() => { prog.style.display = 'none'; }, 2000);
+  if (mainMap) refreshMapMarkers();
+  updateHomeCount();
+});
 
 // ── ライトボックスへのドラッグ＆ドロップで同じ場所に写真を追加 ──
 const lb = document.getElementById('lightbox');
-lb.addEventListener('dragover', e => { e.preventDefault(); e.stopPropagation(); if (lb.classList.contains('open')) lb.classList.add('drag-over'); });
+lb.addEventListener('dragover', e => { e.preventDefault(); lb.classList.add('drag-over'); });
 lb.addEventListener('dragleave', e => { if (!lb.contains(e.relatedTarget)) lb.classList.remove('drag-over'); });
 lb.addEventListener('drop', async e => {
-  e.preventDefault(); e.stopPropagation();
+  e.preventDefault();
   lb.classList.remove('drag-over');
   if (!currentPhotoId) return;
 
   const files = Array.from(e.dataTransfer.files).filter(f => f.type.startsWith('image/'));
-  if (!files.length) {
-    // 「写真」アプリからのドラッグなどでFileオブジェクトが取得できない場合
-    const prog = document.getElementById('lb-progress');
-    prog.style.display = 'block';
-    prog.textContent = '⚠️ Finderから写真をドラッグしてください（写真アプリ不可）';
-    setTimeout(() => { prog.style.display = 'none'; }, 4000);
-    return;
-  }
+  if (!files.length) return;
 
   // 現在表示中の写真からメタデータをコピー
   const all = await DB.load();
