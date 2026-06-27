@@ -496,6 +496,39 @@
   </div>
 </div>
 
+<!-- ╔═ GOOGLE MAPS FALLBACK MODAL ════════════════════════════════════════╗ -->
+<div id="modal-gmaps" style="display:none;position:fixed;inset:0;z-index:3000;background:rgba(0,0,0,0.65);align-items:center;justify-content:center;padding:16px;">
+  <div style="background:#fff;border-radius:20px;width:100%;max-width:420px;box-shadow:0 24px 64px rgba(0,0,0,0.35);">
+    <div style="padding:18px 20px 0;display:flex;align-items:center;gap:10px;">
+      <span style="font-size:22px;">📍</span>
+      <h2 style="font-size:15px;font-weight:700;flex:1;">住所が見つかりませんでした</h2>
+      <button onclick="closeGmaps()" style="background:#f1f5f9;border:none;cursor:pointer;border-radius:8px;width:32px;height:32px;font-size:18px;">✕</button>
+    </div>
+    <div style="padding:16px 20px;">
+      <p style="font-size:13px;color:#555;line-height:1.7;margin-bottom:14px;">
+        OSM・Photonでは <strong id="gmaps-query"></strong> が見つかりませんでした。<br>
+        Googleマップで場所を確認して座標を貼り付けてください。
+      </p>
+      <a id="gmaps-link" href="#" target="_blank" rel="noopener"
+        style="display:block;text-align:center;background:#4285f4;color:#fff;padding:11px;border-radius:12px;font-size:13px;font-weight:700;text-decoration:none;margin-bottom:16px;">
+        🗺️ Googleマップで検索する（新しいタブ）
+      </a>
+      <p style="font-size:12px;color:#6b7280;margin-bottom:8px;line-height:1.6;">
+        Googleマップで場所を確認したら、地図上を<strong>右クリック</strong>して表示される座標（例: <code>-6.2088, 106.8456</code>）をコピーして貼り付けてください。
+      </p>
+      <div style="display:flex;gap:8px;">
+        <input id="gmaps-coords-input" type="text" placeholder="-6.2088, 106.8456"
+          style="flex:1;padding:10px 12px;border:1.5px solid #e5e7eb;border-radius:10px;font-size:14px;outline:none;font-family:monospace;"
+          onkeydown="if(event.key==='Enter') applyGmapsCoords()">
+        <button onclick="applyGmapsCoords()"
+          style="padding:10px 16px;background:#e94560;color:#fff;border:none;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;">
+          設定
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- ╔═ TOAST ══════════════════════════════════════════════════════════════╗ -->
 <div id="toast"></div>
 
@@ -847,15 +880,65 @@ function initMiniMap() {
 }
 
 async function forwardGeocode(query) {
+  // 1st: Nominatim (OpenStreetMap)
   try {
     const res = await fetch(
       `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=1`,
       { headers: { 'Accept-Language': 'ja' } }
     );
     const data = await res.json();
-    if (data && data[0]) return { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon), display: data[0].display_name };
-    return null;
-  } catch { return null; }
+    if (data && data[0]) return { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon), display: data[0].display_name, source: 'OSM' };
+  } catch {}
+
+  // 2nd: Photon (Komoot) – 異なるエンジンでインドネシア住所に強い
+  try {
+    const res = await fetch(
+      `https://photon.komoot.io/api/?q=${encodeURIComponent(query)}&limit=1&lang=ja`
+    );
+    const data = await res.json();
+    if (data.features && data.features[0]) {
+      const [lng, lat] = data.features[0].geometry.coordinates;
+      const p = data.features[0].properties;
+      const display = [p.name, p.street, p.city, p.country].filter(Boolean).join(', ');
+      return { lat, lng, display, source: 'Photon' };
+    }
+  } catch {}
+
+  return null;
+}
+
+// Googleマップポップアップから座標を貼り付けるUI
+let _pendingGeoInputId = null, _pendingGeoMapId = null;
+
+function showGoogleMapsFallback(inputId, mapId, query) {
+  _pendingGeoInputId = inputId;
+  _pendingGeoMapId = mapId;
+  const googleUrl = `https://www.google.com/maps/search/${encodeURIComponent(query)}`;
+  document.getElementById('gmaps-link').href = googleUrl;
+  document.getElementById('gmaps-query').textContent = `「${query}」`;
+  document.getElementById('gmaps-coords-input').value = '';
+  document.getElementById('modal-gmaps').style.display = 'flex';
+}
+
+function closeGmaps() { document.getElementById('modal-gmaps').style.display = 'none'; }
+
+function applyGmapsCoords() {
+  const raw = document.getElementById('gmaps-coords-input').value.trim();
+  // 受け付けるフォーマット: "lat,lng" または "lat, lng"
+  const match = raw.match(/(-?\d+\.?\d*)[,\s]+(-?\d+\.?\d*)/);
+  if (!match) { showToast('⚠️ 形式: 緯度,経度 （例: -6.2088,106.8456）'); return; }
+  const lat = parseFloat(match[1]), lng = parseFloat(match[2]);
+  if (lat < -90 || lat > 90 || lng < -180 || lng > 180) { showToast('⚠️ 座標の値が不正です'); return; }
+
+  if (_pendingGeoMapId === 'mini-map' && miniMap) {
+    miniMap.flyTo({ center: [lng, lat], zoom: 15 });
+    placePin(lat, lng, true);
+  } else if (_pendingGeoMapId === 'edit-mini-map' && editMap) {
+    editMap.flyTo({ center: [lng, lat], zoom: 15 });
+    placEditPin(lat, lng, true);
+  }
+  closeGmaps();
+  showToast('✅ 座標を設定しました');
 }
 
 async function geocodeAddress(inputId, mapId) {
@@ -866,14 +949,19 @@ async function geocodeAddress(inputId, mapId) {
   btn.disabled = true; btn.textContent = '…';
   const result = await forwardGeocode(query);
   btn.disabled = false; btn.textContent = '🔍';
-  if (!result) { showToast('⚠️ 住所が見つかりませんでした'); return; }
 
-  if (mapId === 'mini-map' && miniMap) {
-    miniMap.flyTo({ center: [result.lng, result.lat], zoom: 14 });
-    placePin(result.lat, result.lng, false);
-  } else if (mapId === 'edit-mini-map' && editMap) {
-    editMap.flyTo({ center: [result.lng, result.lat], zoom: 14 });
-    placEditPin(result.lat, result.lng, false);
+  if (result) {
+    if (mapId === 'mini-map' && miniMap) {
+      miniMap.flyTo({ center: [result.lng, result.lat], zoom: 14 });
+      placePin(result.lat, result.lng, false);
+    } else if (mapId === 'edit-mini-map' && editMap) {
+      editMap.flyTo({ center: [result.lng, result.lat], zoom: 14 });
+      placEditPin(result.lat, result.lng, false);
+    }
+    document.getElementById(inputId).value = result.display;
+  } else {
+    // 両エンジンで見つからない → Googleマップ誘導
+    showGoogleMapsFallback(inputId, mapId, query);
   }
 }
 
