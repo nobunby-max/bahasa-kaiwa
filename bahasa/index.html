@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Bahasa 日常会話</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: #f0f4f8;
+      color: #2d3748;
+      min-height: 100vh;
+    }
+
+    header {
+      background: linear-gradient(135deg, #c8102e, #e63950);
+      color: white;
+      padding: 20px 24px;
+      text-align: center;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    }
+
+    header h1 {
+      font-size: 1.6rem;
+      letter-spacing: 1px;
+    }
+
+    header p {
+      font-size: 0.9rem;
+      opacity: 0.85;
+      margin-top: 4px;
+    }
+
+    .genre-tabs {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      padding: 20px 16px 10px;
+      justify-content: center;
+    }
+
+    .genre-btn {
+      background: white;
+      border: 2px solid #c8102e;
+      color: #c8102e;
+      padding: 10px 18px;
+      border-radius: 24px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .genre-btn:hover {
+      background: #c8102e;
+      color: white;
+    }
+
+    .genre-btn.active {
+      background: #c8102e;
+      color: white;
+    }
+
+    .section-title {
+      text-align: center;
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: #c8102e;
+      padding: 8px 16px 4px;
+    }
+
+    .conversation-list {
+      padding: 12px 16px 40px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      max-width: 680px;
+      margin: 0 auto;
+    }
+
+    .phrase-card {
+      background: white;
+      border-radius: 16px;
+      padding: 16px 18px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.07);
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+    }
+
+    .phrase-text {
+      flex: 1;
+    }
+
+    .phrase-bahasa {
+      font-size: 1.15rem;
+      font-weight: 700;
+      color: #1a202c;
+      line-height: 1.4;
+    }
+
+    .phrase-katakana {
+      font-size: 0.9rem;
+      color: #718096;
+      margin-top: 3px;
+    }
+
+    .phrase-japanese {
+      font-size: 0.85rem;
+      color: #a0aec0;
+      margin-top: 4px;
+    }
+
+    .play-btn {
+      background: #c8102e;
+      border: none;
+      color: white;
+      width: 42px;
+      height: 42px;
+      border-radius: 50%;
+      font-size: 1.1rem;
+      cursor: pointer;
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.2s, transform 0.1s;
+      margin-top: 2px;
+    }
+
+    .play-btn:hover { background: #a00d24; }
+    .play-btn:active { transform: scale(0.93); }
+    .play-btn.playing { background: #38a169; }
+
+    .tts-notice {
+      text-align: center;
+      font-size: 0.78rem;
+      color: #a0aec0;
+      padding: 4px 16px 12px;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>🇮🇩 Bahasa 日常会話</h1>
+  <p>インドネシア語フレーズ集</p>
+</header>
+
+<div class="genre-tabs" id="genreTabs"></div>
+<div class="section-title" id="sectionTitle"></div>
+<p class="tts-notice">※ 音声はブラウザの音声合成（TTS）を使用しています</p>
+<div class="conversation-list" id="phraseList"></div>
+
+<script>
+const genres = [
+  {
+    id: "greetings",
+    label: "一般的な挨拶",
+    phrases: [
+      { bahasa: "Selamat pagi", katakana: "スラマット パギ", japanese: "おはようございます" },
+      { bahasa: "Selamat siang", katakana: "スラマット シアン", japanese: "こんにちは（昼）" },
+      { bahasa: "Selamat sore", katakana: "スラマット ソレ", japanese: "こんにちは（夕方）" },
+      { bahasa: "Selamat malam", katakana: "スラマット マラム", japanese: "こんばんは" },
+      { bahasa: "Apa kabar?", katakana: "アパ カバル？", japanese: "お元気ですか？" },
+      { bahasa: "Baik, terima kasih.", katakana: "バイク、トゥリマ カシ", japanese: "元気です、ありがとう。" },
+      { bahasa: "Sampai jumpa.", katakana: "サンパイ ジュンパ", japanese: "またね。さようなら。" },
+      { bahasa: "Selamat tinggal.", katakana: "スラマット ティンガル", japanese: "お元気で。（立ち去る側が言う）" },
+      { bahasa: "Terima kasih.", katakana: "トゥリマ カシ", japanese: "ありがとうございます。" },
+      { bahasa: "Sama-sama.", katakana: "サマ サマ", japanese: "どういたしまして。" },
+      { bahasa: "Maaf.", katakana: "マアフ", japanese: "すみません。ごめんなさい。" },
+      { bahasa: "Permisi.", katakana: "プルミシ", japanese: "失礼します。すみません（通り抜けなど）。" },
+      { bahasa: "Nama saya ...", katakana: "ナマ サヤ ...", japanese: "私の名前は...です。" },
+      { bahasa: "Senang bertemu dengan Anda.", katakana: "スナン ブルトゥム ドゥンガン アンダ", japanese: "お会いできて嬉しいです。" },
+    ]
+  },
+  {
+    id: "client",
+    label: "お客様との挨拶",
+    phrases: [
+      { bahasa: "Selamat datang.", katakana: "スラマット ダタン", japanese: "いらっしゃいませ。ようこそ。" },
+      { bahasa: "Ada yang bisa saya bantu?", katakana: "アダ ヤン ビサ サヤ バントゥ？", japanese: "何かお手伝いできることはありますか？" },
+      { bahasa: "Silakan masuk.", katakana: "シラカン マスック", japanese: "どうぞお入りください。" },
+      { bahasa: "Silakan duduk.", katakana: "シラカン ドゥドゥック", japanese: "どうぞお座りください。" },
+      { bahasa: "Mohon tunggu sebentar.", katakana: "モホン トゥンググ スブンタル", japanese: "少々お待ちください。" },
+      { bahasa: "Terima kasih sudah menunggu.", katakana: "トゥリマ カシ スダー ムヌングー", japanese: "お待たせしました。" },
+      { bahasa: "Apakah Anda sudah punya janji?", katakana: "アパカー アンダ スダー プニャ ジャンジ？", japanese: "ご予約はございますか？" },
+      { bahasa: "Atas nama siapa?", katakana: "アタス ナマ シアパ？", japanese: "どなた様のお名前でしょうか？" },
+      { bahasa: "Selamat tinggal. Terima kasih.", katakana: "スラマット ティンガル。トゥリマ カシ", japanese: "またのお越しをお待ちしております。" },
+      { bahasa: "Semoga harinya menyenangkan.", katakana: "スモガ ハリニャ ムニュナンカン", japanese: "良い一日をお過ごしください。" },
+    ]
+  },
+  {
+    id: "team",
+    label: "チームとの挨拶",
+    phrases: [
+      { bahasa: "Selamat pagi, semua!", katakana: "スラマット パギ、スムア！", japanese: "みなさん、おはようございます！" },
+      { bahasa: "Bagaimana kabarnya hari ini?", katakana: "バガイマナ カバルニャ ハリ イニ？", japanese: "今日の調子はどうですか？" },
+      { bahasa: "Ayo mulai rapat.", katakana: "アヨ ムライ ラパット", japanese: "さあ、会議を始めましょう。" },
+      { bahasa: "Ada yang ingin disampaikan?", katakana: "アダ ヤン インギン ディサンパイカン？", japanese: "何か共有したいことはありますか？" },
+      { bahasa: "Kerja bagus!", katakana: "クルジャ バグス！", japanese: "よくできました！お疲れ様！" },
+      { bahasa: "Terima kasih atas kerja kerasnya.", katakana: "トゥリマ カシ アタス クルジャ クラスニャ", japanese: "ご尽力いただきありがとうございます。" },
+      { bahasa: "Sampai jumpa besok.", katakana: "サンパイ ジュンパ ブソック", japanese: "また明日。" },
+      { bahasa: "Tolong bantu saya dengan ini.", katakana: "トロン バントゥ サヤ ドゥンガン イニ", japanese: "これを手伝ってもらえますか？" },
+      { bahasa: "Sudah selesai?", katakana: "スダー スレサイ？", japanese: "もう終わりましたか？" },
+      { bahasa: "Mari kita makan siang bersama.", katakana: "マリ キタ マカン シアン ブルサマ", japanese: "一緒にランチを食べましょう。" },
+    ]
+  },
+  {
+    id: "driver",
+    label: "運転手との会話",
+    phrases: [
+      { bahasa: "Tolong antar saya ke ...", katakana: "トロン アンタル サヤ ク ...", japanese: "...まで連れて行ってください。" },
+      { bahasa: "Berapa ongkosnya?", katakana: "ブラパ オンコスニャ？", japanese: "料金はいくらですか？" },
+      { bahasa: "Tolong gunakan argometer.", katakana: "トロン グナカン アルゴメーテル", japanese: "メーターを使ってください。" },
+      { bahasa: "Tolong lebih pelan.", katakana: "トロン レビ プラン", japanese: "もっとゆっくり走ってください。" },
+      { bahasa: "Belok kanan di sini.", katakana: "ブロック カナン ディ シニ", japanese: "ここで右に曲がってください。" },
+      { bahasa: "Belok kiri di sini.", katakana: "ブロック キリ ディ シニ", japanese: "ここで左に曲がってください。" },
+      { bahasa: "Lurus terus.", katakana: "ルルス トゥルス", japanese: "まっすぐ行ってください。" },
+      { bahasa: "Berhenti di sini.", katakana: "ブルヘンティ ディ シニ", japanese: "ここで止めてください。" },
+      { bahasa: "Tolong tunggu sebentar.", katakana: "トロン トゥングー スブンタル", japanese: "少し待ってください。" },
+      { bahasa: "Ini kembaliannya.", katakana: "イニ クンバリアンニャ", japanese: "これがお釣りです。" },
+      { bahasa: "Terima kasih, sudah cukup.", katakana: "トゥリマ カシ、スダー チュクップ", japanese: "ありがとう、お釣りはいいです。" },
+      { bahasa: "Apakah bisa pakai kartu?", katakana: "アパカー ビサ パカイ カルトゥ？", japanese: "カードは使えますか？" },
+    ]
+  }
+];
+
+let currentGenre = genres[0].id;
+let currentUtterance = null;
+
+function renderTabs() {
+  const tabs = document.getElementById("genreTabs");
+  tabs.innerHTML = "";
+  genres.forEach(g => {
+    const btn = document.createElement("button");
+    btn.className = "genre-btn" + (g.id === currentGenre ? " active" : "");
+    btn.textContent = g.label;
+    btn.onclick = () => selectGenre(g.id);
+    tabs.appendChild(btn);
+  });
+}
+
+function selectGenre(id) {
+  currentGenre = id;
+  stopAudio();
+  renderTabs();
+  renderPhrases();
+}
+
+function renderPhrases() {
+  const genre = genres.find(g => g.id === currentGenre);
+  document.getElementById("sectionTitle").textContent = "📖 " + genre.label;
+
+  const list = document.getElementById("phraseList");
+  list.innerHTML = "";
+
+  genre.phrases.forEach((p, i) => {
+    const card = document.createElement("div");
+    card.className = "phrase-card";
+
+    const textDiv = document.createElement("div");
+    textDiv.className = "phrase-text";
+
+    const bahasa = document.createElement("div");
+    bahasa.className = "phrase-bahasa";
+    bahasa.textContent = p.bahasa;
+
+    const katakana = document.createElement("div");
+    katakana.className = "phrase-katakana";
+    katakana.textContent = "🔤 " + p.katakana;
+
+    const japanese = document.createElement("div");
+    japanese.className = "phrase-japanese";
+    japanese.textContent = "🇯🇵 " + p.japanese;
+
+    textDiv.appendChild(bahasa);
+    textDiv.appendChild(katakana);
+    textDiv.appendChild(japanese);
+
+    const playBtn = document.createElement("button");
+    playBtn.className = "play-btn";
+    playBtn.innerHTML = "▶";
+    playBtn.setAttribute("aria-label", "音声を再生");
+    playBtn.onclick = () => playPhrase(p.bahasa, playBtn);
+
+    card.appendChild(textDiv);
+    card.appendChild(playBtn);
+    list.appendChild(card);
+  });
+}
+
+function stopAudio() {
+  if (window.speechSynthesis) window.speechSynthesis.cancel();
+  document.querySelectorAll(".play-btn.playing").forEach(b => {
+    b.classList.remove("playing");
+    b.innerHTML = "▶";
+  });
+  currentUtterance = null;
+}
+
+function playPhrase(text, btn) {
+  if (!window.speechSynthesis) { alert("このブラウザは音声合成に対応していません。"); return; }
+  if (btn.classList.contains("playing")) { stopAudio(); return; }
+  stopAudio();
+  const utter = new SpeechSynthesisUtterance(text);
+  utter.lang = "id-ID";
+  utter.rate = 0.85;
+  utter.pitch = 1;
+  const voices = window.speechSynthesis.getVoices();
+  const idVoice = voices.find(v => v.lang.startsWith("id"));
+  if (idVoice) utter.voice = idVoice;
+  btn.classList.add("playing");
+  btn.innerHTML = "■";
+  currentUtterance = utter;
+  utter.onend = () => { btn.classList.remove("playing"); btn.innerHTML = "▶"; currentUtterance = null; };
+  utter.onerror = () => { btn.classList.remove("playing"); btn.innerHTML = "▶"; currentUtterance = null; };
+  window.speechSynthesis.speak(utter);
+}
+
+window.speechSynthesis && window.speechSynthesis.addEventListener("voiceschanged", () => {});
+
+renderTabs();
+renderPhrases();
+</script>
+</body>
+</html>
