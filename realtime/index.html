@@ -251,11 +251,11 @@
 <div id="appContent" style="display:none; width:100%; display:none; flex-direction:column; align-items:center;">
 
 <h1>🎙️ バハサ→日本語 リアルタイム翻訳</h1>
-<p class="subtitle">インドネシア語音声を日本語テキストにリアルタイム変換 <small style="opacity:0.4">v17</small></p>
+<p class="subtitle">インドネシア語音声を日本語テキストにリアルタイム変換 <small style="opacity:0.4">v18</small></p>
 
 <div class="card">
-  <label>OpenAI API キー</label>
-  <input type="password" id="apiKey" placeholder="sk-..." autocomplete="off">
+  <label style="display:none">OpenAI API キー</label>
+  <input type="password" id="apiKey" placeholder="sk-..." autocomplete="off" style="display:none">
 
   <div id="visualizer">
     <div class="bar" id="b0"></div><div class="bar" id="b1"></div>
@@ -394,26 +394,16 @@ function stopViz() {
   bars.forEach(b => { b.style.height = '3px'; b.style.background = '#5566ff44'; });
 }
 
-// ─── GPT translation ─────────────────────────────────────────────────────────
+// ─── Translation (MyMemory API - no key, no CORS preflight) ──────────────────
 async function translateToJapanese(apiKey, indonesian) {
-  const res = await fetch('https://api.openai.com/v1/chat/completions', {
-    method: 'POST',
-    headers: { 'Authorization': 'Bearer ' + apiKey, 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      model: 'gpt-4o-mini',
-      messages: [
-        { role: 'system', content: 'インドネシア語を日本語に翻訳してください。翻訳のみ出力し、説明は不要です。' },
-        { role: 'user', content: indonesian }
-      ],
-      max_tokens: 300
-    })
-  });
-  if (!res.ok) {
-    const e = await res.json().catch(() => ({}));
-    throw new Error('翻訳エラー: ' + (e.error?.message || res.status));
-  }
+  const url = 'https://api.mymemory.translated.net/get?q=' +
+    encodeURIComponent(indonesian) + '&langpair=id|ja';
+  const res = await fetch(url);
+  if (!res.ok) throw new Error('翻訳エラー: ' + res.status);
   const data = await res.json();
-  return data.choices?.[0]?.message?.content?.trim() || '';
+  const translated = data.responseData?.translatedText;
+  if (!translated || translated === indonesian) throw new Error('翻訳失敗');
+  return translated;
 }
 
 // ─── Session ─────────────────────────────────────────────────────────────────
@@ -427,7 +417,7 @@ async function toggleSession() {
 
 async function startSession() {
   const apiKey = document.getElementById('apiKey').value.trim();
-  if (!apiKey) { showError('APIキーを入力してください。'); return; }
+  // apiKey not required for MyMemory translation
 
   startBtn.disabled = true;
   setStatus('connecting', 'マイク確認中…');
