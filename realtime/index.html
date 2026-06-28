@@ -396,11 +396,21 @@ function stopViz() {
 }
 
 // ─── PCM16 encoding ──────────────────────────────────────────────────────────
-function float32ToPCM16Base64(float32Array) {
-  const buf = new ArrayBuffer(float32Array.length * 2);
+function resampleTo24k(input, inputRate) {
+  if (inputRate === 24000) return input;
+  const ratio = inputRate / 24000;
+  const outLen = Math.round(input.length / ratio);
+  const out = new Float32Array(outLen);
+  for (let i = 0; i < outLen; i++) out[i] = input[Math.min(Math.round(i * ratio), input.length - 1)];
+  return out;
+}
+
+function float32ToPCM16Base64(float32Array, inputRate) {
+  const resampled = resampleTo24k(float32Array, inputRate || 24000);
+  const buf = new ArrayBuffer(resampled.length * 2);
   const view = new DataView(buf);
-  for (let i = 0; i < float32Array.length; i++) {
-    const s = Math.max(-1, Math.min(1, float32Array[i]));
+  for (let i = 0; i < resampled.length; i++) {
+    const s = Math.max(-1, Math.min(1, resampled[i]));
     view.setInt16(i * 2, s < 0 ? s * 32768 : s * 32767, true);
   }
   // base64 encode
@@ -464,7 +474,7 @@ If the audio is silent or unclear, output nothing.`,
       return;
     }
 
-    audioContext = new AudioContext({ sampleRate: 24000 });
+    audioContext = new AudioContext();
     const source = audioContext.createMediaStreamSource(mediaStream);
 
     analyser = audioContext.createAnalyser();
@@ -477,7 +487,7 @@ If the audio is silent or unclear, output nothing.`,
 
     processor.onaudioprocess = (e) => {
       if (!ws || ws.readyState !== WebSocket.OPEN) return;
-      const pcm = float32ToPCM16Base64(e.inputBuffer.getChannelData(0));
+      const pcm = float32ToPCM16Base64(e.inputBuffer.getChannelData(0), audioContext.sampleRate);
       ws.send(JSON.stringify({ type: 'input_audio_buffer.append', audio: pcm }));
     };
 
