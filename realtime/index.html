@@ -251,7 +251,7 @@
 <div id="appContent" style="display:none; width:100%; display:none; flex-direction:column; align-items:center;">
 
 <h1>🎙️ バハサ→日本語 リアルタイム翻訳</h1>
-<p class="subtitle">インドネシア語音声を日本語テキストにリアルタイム変換 <small style="opacity:0.4">v5</small></p>
+<p class="subtitle">インドネシア語音声を日本語テキストにリアルタイム変換 <small style="opacity:0.4">v6</small></p>
 
 <div class="card">
   <label>OpenAI API キー</label>
@@ -443,10 +443,13 @@ async function startSession() {
     setStatus('idle', '待機中');
     return;
   }
-  try {
-    mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-  } catch (e) {
-    showError('マイクエラー: ' + e.name + ' / ' + e.message + ' / constraint=' + (e.constraint || 'none'));
+  const constraints = [{ audio: {} }, { audio: true }, { audio: { echoCancellation: false } }];
+  let micError = null;
+  for (const c of constraints) {
+    try { mediaStream = await navigator.mediaDevices.getUserMedia(c); micError = null; break; } catch (e) { micError = e; }
+  }
+  if (micError) {
+    showError('マイクエラー: ' + micError.name + ' — マイクが使用中か、接続されていない可能性があります。AirPodsなど外部マイクを外して再試行してください。');
     startBtn.disabled = false;
     setStatus('idle', '待機中');
     return;
