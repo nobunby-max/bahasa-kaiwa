@@ -251,7 +251,7 @@
 <div id="appContent" style="display:none; width:100%; display:none; flex-direction:column; align-items:center;">
 
 <h1>🎙️ バハサ→日本語 リアルタイム翻訳</h1>
-<p class="subtitle">インドネシア語音声を日本語テキストにリアルタイム変換 <small style="opacity:0.4">v12</small></p>
+<p class="subtitle">インドネシア語音声を日本語テキストにリアルタイム変換 <small style="opacity:0.4">v13</small></p>
 
 <div class="card">
   <label>OpenAI API キー</label>
@@ -464,21 +464,26 @@ async function startSession() {
 
   try {
     const RTCPeerConn = window.RTCPeerConnection || window.webkitRTCPeerConnection;
-    if (!RTCPeerConn) { showError('このブラウザはWebRTCに対応していません'); stopSession(); return; }
-    pc = new RTCPeerConn({ iceServers: [] });
+    if (!RTCPeerConn) { showError('WebRTC未対応'); stopSession(); return; }
+
+    try { pc = new RTCPeerConn({ iceServers: [] }); } catch(e) { showError('PC作成失敗: ' + e.message); stopSession(); return; }
 
     // Audio viz via Web Audio
-    audioContext = new AudioContext();
-    analyser = audioContext.createAnalyser();
-    analyser.fftSize = 256;
-    const source = audioContext.createMediaStreamSource(mediaStream);
-    source.connect(analyser);
+    try {
+      audioContext = new AudioContext();
+      analyser = audioContext.createAnalyser();
+      analyser.fftSize = 256;
+      const source = audioContext.createMediaStreamSource(mediaStream);
+      source.connect(analyser);
+    } catch(e) { showError('AudioContext失敗: ' + e.message); stopSession(); return; }
 
     // Add mic track to peer connection
-    mediaStream.getTracks().forEach(t => pc.addTrack(t, mediaStream));
+    try {
+      mediaStream.getTracks().forEach(t => pc.addTrack(t));
+    } catch(e) { showError('addTrack失敗: ' + e.message); stopSession(); return; }
 
     // Data channel for sending/receiving events
-    dc = pc.createDataChannel('oai-events');
+    try { dc = pc.createDataChannel('oai-events'); } catch(e) { showError('DataChannel失敗: ' + e.message); stopSession(); return; }
 
     dc.onopen = () => {
       // Configure session
