@@ -251,7 +251,7 @@
 <div id="appContent" style="display:none; width:100%; display:none; flex-direction:column; align-items:center;">
 
 <h1>🎙️ バハサ→日本語 リアルタイム翻訳</h1>
-<p class="subtitle">インドネシア語音声を日本語テキストにリアルタイム変換 <small style="opacity:0.4">v15</small></p>
+<p class="subtitle">インドネシア語音声を日本語テキストにリアルタイム変換 <small style="opacity:0.4">v16</small></p>
 
 <div class="card">
   <label>OpenAI API キー</label>
@@ -293,14 +293,13 @@
 <script>
 // ─── State ───────────────────────────────────────────────────────────────────
 let mediaStream = null;
-let mediaRecorder = null;
+let recognition = null;
 let audioContext = null;
 let analyser = null;
 let vizFrame = null;
 let isRecording = false;
 let partialEl = null;
 let segmentCount = 0;
-let chunkInterval = null;
 
 // ─── UI helpers ──────────────────────────────────────────────────────────────
 const statusDot  = document.getElementById('statusDot');
@@ -395,32 +394,9 @@ function stopViz() {
   bars.forEach(b => { b.style.height = '3px'; b.style.background = '#5566ff44'; });
 }
 
-// ─── Whisper + GPT translation ───────────────────────────────────────────────
-async function transcribeAndTranslate(apiKey, audioBlob) {
-  // Step 1: Whisper transcription
-  const form = new FormData();
-  form.append('file', audioBlob, 'audio.mp4');
-  form.append('model', 'whisper-1');
-  form.append('language', 'id');
-
-  const txRes = await fetch('https://api.openai.com/v1/audio/transcriptions', {
-    method: 'POST',
-    headers: { 'Authorization': 'Bearer ' + apiKey },
-    body: form
-  });
-  if (!txRes.ok) {
-    const e = await txRes.json().catch(() => ({}));
-    throw new Error('Whisper: ' + (e.error?.message || txRes.status));
-  }
-  const txData = await txRes.json();
-  const indonesian = txData.text?.trim();
-  if (!indonesian) return;
-
-  // Show partial while translating
-  addPartialText('翻訳中: ' + indonesian);
-
-  // Step 2: GPT translation to Japanese
-  const trRes = await fetch('https://api.openai.com/v1/chat/completions', {
+// ─── GPT translation ─────────────────────────────────────────────────────────
+async function translateToJapanese(apiKey, indonesian) {
+  const res = await fetch('https://api.openai.com/v1/chat/completions', {
     method: 'POST',
     headers: { 'Authorization': 'Bearer ' + apiKey, 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -429,17 +405,15 @@ async function transcribeAndTranslate(apiKey, audioBlob) {
         { role: 'system', content: 'インドネシア語を日本語に翻訳してください。翻訳のみ出力し、説明は不要です。' },
         { role: 'user', content: indonesian }
       ],
-      max_tokens: 500
+      max_tokens: 300
     })
   });
-  if (!trRes.ok) {
-    const e = await trRes.json().catch(() => ({}));
-    throw new Error('GPT: ' + (e.error?.message || trRes.status));
+  if (!res.ok) {
+    const e = await res.json().catch(() => ({}));
+    throw new Error('翻訳エラー: ' + (e.error?.message || res.status));
   }
-  const trData = await trRes.json();
-  const japanese = trData.choices?.[0]?.message?.content?.trim();
-  if (japanese) finalizeText(japanese);
-  else if (partialEl) { partialEl.remove(); partialEl = null; }
+  const data = await res.json();
+  return data.choices?.[0]?.message?.content?.trim() || '';
 }
 
 // ─── Session ─────────────────────────────────────────────────────────────────
@@ -485,47 +459,60 @@ async function startSession() {
     audioContext.createMediaStreamSource(mediaStream).connect(analyser);
   } catch(_) {}
 
-  // Start MediaRecorder — record in 6-second chunks
-  const mimeType = MediaRecorder.isTypeSupported('audio/mp4') ? 'audio/mp4'
-    : MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm'
-    : '';
-  try {
-    mediaRecorder = new MediaRecorder(mediaStream, mimeType ? { mimeType } : {});
-  } catch(e) {
-    showError('録音開始失敗: ' + e.message);
+  // Web Speech API for transcription
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SpeechRecognition) {
+    showError('このブラウザは音声認識に対応していません');
     stopSession(); return;
   }
 
-  mediaRecorder.ondataavailable = async (e) => {
-    if (!isRecording || !e.data || e.data.size < 1000) return;
-    try {
-      await transcribeAndTranslate(apiKey, e.data);
-    } catch(err) {
-      showError('エラー: ' + err.message);
+  recognition = new SpeechRecognition();
+  recognition.lang = 'id-ID';
+  recognition.continuous = true;
+  recognition.interimResults = true;
+
+  recognition.onresult = async (event) => {
+    for (let i = event.resultIndex; i < event.results.length; i++) {
+      if (event.results[i].isFinal) {
+        const text = event.results[i][0].transcript.trim();
+        if (!text) continue;
+        addPartialText('翻訳中: ' + text);
+        try {
+          const japanese = await translateToJapanese(apiKey, text);
+          if (japanese) finalizeText(japanese);
+          else if (partialEl) { partialEl.remove(); partialEl = null; }
+        } catch(e) {
+          showError(e.message);
+          if (partialEl) { partialEl.remove(); partialEl = null; }
+        }
+      } else {
+        addPartialText(event.results[i][0].transcript);
+      }
     }
   };
 
-  mediaRecorder.start();
-  chunkInterval = setInterval(() => {
-    if (mediaRecorder && mediaRecorder.state === 'recording') {
-      mediaRecorder.requestData();
-    }
-  }, 6000);
+  recognition.onerror = (e) => {
+    if (e.error === 'no-speech') return;
+    showError('音声認識エラー: ' + e.error);
+  };
 
+  recognition.onend = () => {
+    if (isRecording) recognition.start();
+  };
+
+  recognition.start();
   startViz();
   isRecording = true;
   startBtn.disabled = false;
   startBtn.textContent = '■ 停止';
   startBtn.classList.add('recording');
-  setStatus('recording', '録音・翻訳中（約6秒ごと）');
+  setStatus('recording', '録音・翻訳中');
 }
 
 function stopSession() {
   isRecording = false;
 
-  if (chunkInterval) { clearInterval(chunkInterval); chunkInterval = null; }
-  if (mediaRecorder && mediaRecorder.state !== 'inactive') { mediaRecorder.stop(); }
-  mediaRecorder = null;
+  if (recognition) { try { recognition.stop(); } catch(_){} recognition = null; }
   if (analyser)  { analyser.disconnect();  analyser = null; }
   if (audioContext) { audioContext.close(); audioContext = null; }
   if (mediaStream) { mediaStream.getTracks().forEach(t => t.stop()); mediaStream = null; }
