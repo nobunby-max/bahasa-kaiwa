@@ -251,7 +251,7 @@
 <div id="appContent" style="display:none; width:100%; display:none; flex-direction:column; align-items:center;">
 
 <h1>🎙️ バハサ→日本語 リアルタイム翻訳</h1>
-<p class="subtitle">インドネシア語音声を日本語テキストにリアルタイム変換 <small style="opacity:0.4">v3</small></p>
+<p class="subtitle">インドネシア語音声を日本語テキストにリアルタイム変換 <small style="opacity:0.4">v4</small></p>
 
 <div class="card">
   <label>OpenAI API キー</label>
@@ -434,6 +434,18 @@ async function startSession() {
   if (!apiKey) { showError('APIキーを入力してください。'); return; }
 
   startBtn.disabled = true;
+  setStatus('connecting', 'マイク確認中…');
+
+  // Request microphone FIRST (must be within user gesture for Safari)
+  try {
+    mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+  } catch (e) {
+    showError('マイクへのアクセスが拒否されました: ' + e.message);
+    startBtn.disabled = false;
+    setStatus('idle', '待機中');
+    return;
+  }
+
   setStatus('connecting', '接続中…');
 
   // WebSocket to OpenAI Realtime API
@@ -464,23 +476,6 @@ If the audio is silent or unclear, output nothing.`,
         temperature: 0.3
       }
     }));
-
-    // Start microphone — try progressively simpler constraints for browser compatibility
-    const audioConstraints = [
-      { audio: { echoCancellation: true, noiseSuppression: true } },
-      { audio: true },
-      { audio: {}, video: false },
-    ];
-    let micError = null;
-    for (const c of audioConstraints) {
-      try { mediaStream = await navigator.mediaDevices.getUserMedia(c); micError = null; break; }
-      catch (e) { micError = e; }
-    }
-    if (micError) {
-      showError('マイクへのアクセスが拒否されました: ' + micError.message + ' — Safariの設定でマイクを許可してください');
-      ws.close();
-      return;
-    }
 
     audioContext = new AudioContext();
     const source = audioContext.createMediaStreamSource(mediaStream);
