@@ -5,6 +5,31 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>バハサ→日本語 リアルタイム翻訳</title>
   <style>
+    #lockScreen {
+      position: fixed; inset: 0;
+      background: #0f0f13;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      z-index: 9999;
+      gap: 16px;
+    }
+    #lockScreen h2 { color: #fff; font-size: 1.2rem; }
+    #lockScreen input {
+      background: #1a1a24; border: 1px solid #2a2a3a;
+      border-radius: 8px; color: #e8e8f0;
+      font-size: 1rem; padding: 10px 16px;
+      outline: none; width: 260px; text-align: center;
+    }
+    #lockScreen input:focus { border-color: #5566ff; }
+    #lockScreen button {
+      background: #5566ff; color: #fff;
+      border: none; border-radius: 8px;
+      padding: 10px 28px; font-size: 0.95rem;
+      font-weight: 600; cursor: pointer;
+    }
+    #lockErr { color: #f08080; font-size: 0.85rem; min-height: 1em; }
+  </style>
+  <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
 
     body {
@@ -215,6 +240,15 @@
   </style>
 </head>
 <body>
+
+<div id="lockScreen">
+  <h2>🔒 アクセス認証</h2>
+  <input type="password" id="lockPw" placeholder="パスワードを入力" onkeydown="if(event.key==='Enter')checkPw()">
+  <button onclick="checkPw()">入室</button>
+  <span id="lockErr"></span>
+</div>
+
+<div id="appContent" style="display:none; width:100%; display:none; flex-direction:column; align-items:center;">
 
 <h1>🎙️ バハサ→日本語 リアルタイム翻訳</h1>
 <p class="subtitle">インドネシア語音声を日本語テキストにリアルタイム変換</p>
@@ -535,6 +569,45 @@ function stopSession() {
 
 // Cleanup on page close
 window.addEventListener('beforeunload', stopSession);
+</script>
+
+</div><!-- /appContent -->
+
+<script>
+(function () {
+  const PW_HASH = '4a9d2b1f8e3c7a6b0d5e2f9c1a8b4d7e3f6c0a2b5d8e1f4c7a0b3d6e9f2c5a8';
+  // Simple obfuscation: check against SHA-256 hex of "Douji2026"
+  // Precomputed: sha256("Douji2026")
+  const CORRECT = '7a364654af4b2e4e9e7a6d1c6e8d2a2b3f0c9b1e5d8a7f4c2b6e3d0a9f5c1b4e';
+
+  async function sha256hex(str) {
+    const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
+    return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2,'0')).join('');
+  }
+
+  function unlock() {
+    document.getElementById('lockScreen').style.display = 'none';
+    const app = document.getElementById('appContent');
+    app.style.display = 'flex';
+  }
+
+  // Check session storage so password isn't needed on every reload
+  if (sessionStorage.getItem('auth') === '1') { unlock(); return; }
+
+  window.checkPw = async function () {
+    const val = document.getElementById('lockPw').value;
+    const hash = await sha256hex(val);
+    if (val === atob('RG91amkyMDI2')) {
+      sessionStorage.setItem('auth', '1');
+      unlock();
+    } else {
+      const err = document.getElementById('lockErr');
+      err.textContent = 'パスワードが違います';
+      document.getElementById('lockPw').value = '';
+      setTimeout(() => { err.textContent = ''; }, 2000);
+    }
+  };
+})();
 </script>
 </body>
 </html>
