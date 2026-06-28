@@ -251,7 +251,7 @@
 <div id="appContent" style="display:none; width:100%; display:none; flex-direction:column; align-items:center;">
 
 <h1>🎙️ バハサ→日本語 リアルタイム翻訳</h1>
-<p class="subtitle">インドネシア語音声を日本語テキストにリアルタイム変換 <small style="opacity:0.4">v7</small></p>
+<p class="subtitle">インドネシア語音声を日本語テキストにリアルタイム変換 <small style="opacity:0.4">v8</small></p>
 
 <div class="card">
   <label>OpenAI API キー</label>
@@ -564,7 +564,7 @@ If the audio is silent or unclear, output nothing.`,
 
   ws.onclose = (ev) => {
     if (isRecording) {
-      showError('接続が切断されました (code: ' + ev.code + ')');
+      showError('接続が切断されました (code: ' + ev.code + ') ' + (ev.reason || ''));
       stopSession();
     }
   };
