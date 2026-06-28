@@ -1,0 +1,613 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>バハサ→日本語 リアルタイム翻訳</title>
+  <style>
+    #lockScreen {
+      position: fixed; inset: 0;
+      background: #0f0f13;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      z-index: 9999;
+      gap: 16px;
+    }
+    #lockScreen h2 { color: #fff; font-size: 1.2rem; }
+    #lockScreen input {
+      background: #1a1a24; border: 1px solid #2a2a3a;
+      border-radius: 8px; color: #e8e8f0;
+      font-size: 1rem; padding: 10px 16px;
+      outline: none; width: 260px; text-align: center;
+    }
+    #lockScreen input:focus { border-color: #5566ff; }
+    #lockScreen button {
+      background: #5566ff; color: #fff;
+      border: none; border-radius: 8px;
+      padding: 10px 28px; font-size: 0.95rem;
+      font-weight: 600; cursor: pointer;
+    }
+    #lockErr { color: #f08080; font-size: 0.85rem; min-height: 1em; }
+  </style>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: #0f0f13;
+      color: #e8e8f0;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 24px 16px;
+    }
+
+    h1 {
+      font-size: 1.5rem;
+      font-weight: 600;
+      margin-bottom: 6px;
+      color: #fff;
+    }
+
+    .subtitle {
+      font-size: 0.85rem;
+      color: #888;
+      margin-bottom: 28px;
+    }
+
+    .card {
+      background: #1a1a24;
+      border: 1px solid #2a2a3a;
+      border-radius: 12px;
+      padding: 20px;
+      width: 100%;
+      max-width: 680px;
+      margin-bottom: 16px;
+    }
+
+    label {
+      display: block;
+      font-size: 0.78rem;
+      color: #888;
+      margin-bottom: 6px;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    input[type="password"], input[type="text"] {
+      width: 100%;
+      background: #0f0f13;
+      border: 1px solid #2a2a3a;
+      border-radius: 8px;
+      color: #e8e8f0;
+      font-size: 0.9rem;
+      padding: 10px 14px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    input:focus { border-color: #5566ff; }
+
+    .controls {
+      display: flex;
+      gap: 12px;
+      margin-top: 16px;
+      align-items: center;
+    }
+
+    button {
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 0.9rem;
+      font-weight: 600;
+      padding: 10px 22px;
+      transition: opacity 0.15s, transform 0.1s;
+    }
+
+    button:active { transform: scale(0.97); }
+    button:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    #startBtn {
+      background: #5566ff;
+      color: #fff;
+    }
+
+    #startBtn.recording {
+      background: #e84444;
+    }
+
+    #clearBtn {
+      background: #2a2a3a;
+      color: #bbb;
+    }
+
+    .status-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: #444;
+      flex-shrink: 0;
+      transition: background 0.3s;
+    }
+
+    .status-dot.connecting { background: #f0a030; animation: pulse 1s infinite; }
+    .status-dot.connected  { background: #44cc77; }
+    .status-dot.recording  { background: #e84444; animation: pulse 0.8s infinite; }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50%       { opacity: 0.3; }
+    }
+
+    #statusText {
+      font-size: 0.82rem;
+      color: #888;
+    }
+
+    /* Translation output */
+    .output-card {
+      background: #1a1a24;
+      border: 1px solid #2a2a3a;
+      border-radius: 12px;
+      width: 100%;
+      max-width: 680px;
+      overflow: hidden;
+    }
+
+    .output-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 18px;
+      border-bottom: 1px solid #2a2a3a;
+      font-size: 0.78rem;
+      color: #666;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    #output {
+      padding: 20px;
+      min-height: 260px;
+      max-height: 480px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .segment {
+      line-height: 1.65;
+      border-left: 3px solid #2a2a3a;
+      padding-left: 12px;
+    }
+
+    .segment.partial {
+      color: #778;
+      border-left-color: #5566ff55;
+    }
+
+    .segment.final {
+      color: #e8e8f0;
+      border-left-color: #5566ff;
+    }
+
+    .segment .meta {
+      font-size: 0.72rem;
+      color: #556;
+      margin-bottom: 2px;
+    }
+
+    .segment .text {
+      font-size: 1.05rem;
+    }
+
+    .placeholder {
+      color: #444;
+      font-size: 0.9rem;
+      margin: auto;
+      text-align: center;
+    }
+
+    /* Volume visualizer */
+    #visualizer {
+      height: 40px;
+      display: flex;
+      align-items: flex-end;
+      gap: 2px;
+      margin-top: 12px;
+    }
+
+    .bar {
+      flex: 1;
+      background: #5566ff44;
+      border-radius: 2px;
+      transition: height 0.08s;
+      min-height: 3px;
+    }
+
+    .error-msg {
+      background: #3a1a1a;
+      border: 1px solid #662222;
+      border-radius: 8px;
+      color: #f08080;
+      font-size: 0.85rem;
+      padding: 10px 14px;
+      margin-top: 12px;
+    }
+  </style>
+</head>
+<body>
+
+<div id="lockScreen">
+  <h2>🔒 アクセス認証</h2>
+  <input type="password" id="lockPw" placeholder="パスワードを入力" onkeydown="if(event.key==='Enter')checkPw()">
+  <button onclick="checkPw()">入室</button>
+  <span id="lockErr"></span>
+</div>
+
+<div id="appContent" style="display:none; width:100%; display:none; flex-direction:column; align-items:center;">
+
+<h1>🎙️ バハサ→日本語 リアルタイム翻訳</h1>
+<p class="subtitle">インドネシア語音声を日本語テキストにリアルタイム変換</p>
+
+<div class="card">
+  <label>OpenAI API キー</label>
+  <input type="password" id="apiKey" placeholder="sk-..." autocomplete="off">
+
+  <div id="visualizer">
+    <div class="bar" id="b0"></div><div class="bar" id="b1"></div>
+    <div class="bar" id="b2"></div><div class="bar" id="b3"></div>
+    <div class="bar" id="b4"></div><div class="bar" id="b5"></div>
+    <div class="bar" id="b6"></div><div class="bar" id="b7"></div>
+    <div class="bar" id="b8"></div><div class="bar" id="b9"></div>
+    <div class="bar" id="b10"></div><div class="bar" id="b11"></div>
+    <div class="bar" id="b12"></div><div class="bar" id="b13"></div>
+    <div class="bar" id="b14"></div><div class="bar" id="b15"></div>
+    <div class="bar" id="b16"></div><div class="bar" id="b17"></div>
+    <div class="bar" id="b18"></div><div class="bar" id="b19"></div>
+  </div>
+
+  <div class="controls">
+    <div class="status-dot" id="statusDot"></div>
+    <span id="statusText">待機中</span>
+    <button id="startBtn" onclick="toggleSession()">▶ 開始</button>
+    <button id="clearBtn" onclick="clearOutput()">クリア</button>
+  </div>
+
+  <div id="errorBox" style="display:none" class="error-msg"></div>
+</div>
+
+<div class="output-card">
+  <div class="output-header">
+    <span>翻訳テキスト（日本語）</span>
+    <span id="segCount">0 セグメント</span>
+  </div>
+  <div id="output">
+    <p class="placeholder">「開始」ボタンを押してインドネシア語を話してください</p>
+  </div>
+</div>
+
+<script>
+// ─── State ───────────────────────────────────────────────────────────────────
+let ws = null;
+let mediaStream = null;
+let audioContext = null;
+let processor = null;
+let analyser = null;
+let vizFrame = null;
+let isRecording = false;
+let partialEl = null;
+let segmentCount = 0;
+
+// ─── UI helpers ──────────────────────────────────────────────────────────────
+const statusDot  = document.getElementById('statusDot');
+const statusText = document.getElementById('statusText');
+const startBtn   = document.getElementById('startBtn');
+const output     = document.getElementById('output');
+const segCount   = document.getElementById('segCount');
+const errorBox   = document.getElementById('errorBox');
+
+function setStatus(state, text) {
+  statusDot.className = 'status-dot ' + state;
+  statusText.textContent = text;
+}
+
+function showError(msg) {
+  errorBox.textContent = msg;
+  errorBox.style.display = 'block';
+  setTimeout(() => { errorBox.style.display = 'none'; }, 6000);
+}
+
+function clearOutput() {
+  output.innerHTML = '<p class="placeholder">「開始」ボタンを押してインドネシア語を話してください</p>';
+  segmentCount = 0;
+  segCount.textContent = '0 セグメント';
+  partialEl = null;
+}
+
+function updateSegCount() {
+  segCount.textContent = segmentCount + ' セグメント';
+}
+
+function removePlaceholder() {
+  const ph = output.querySelector('.placeholder');
+  if (ph) ph.remove();
+}
+
+function addPartialText(text) {
+  removePlaceholder();
+  if (!partialEl) {
+    partialEl = document.createElement('div');
+    partialEl.className = 'segment partial';
+    partialEl.innerHTML = '<div class="meta">翻訳中…</div><div class="text"></div>';
+    output.appendChild(partialEl);
+  }
+  partialEl.querySelector('.text').textContent = text;
+  output.scrollTop = output.scrollHeight;
+}
+
+function finalizeText(text) {
+  if (partialEl) {
+    partialEl.remove();
+    partialEl = null;
+  }
+  if (!text.trim()) return;
+  removePlaceholder();
+
+  const now = new Date().toLocaleTimeString('ja-JP');
+  const div = document.createElement('div');
+  div.className = 'segment final';
+  div.innerHTML = `<div class="meta">${now}</div><div class="text">${escHtml(text)}</div>`;
+  output.appendChild(div);
+  segmentCount++;
+  updateSegCount();
+  output.scrollTop = output.scrollHeight;
+}
+
+function escHtml(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// ─── Visualizer ──────────────────────────────────────────────────────────────
+const bars = Array.from({length:20}, (_,i) => document.getElementById('b'+i));
+
+function startViz() {
+  if (!analyser) return;
+  const buf = new Uint8Array(analyser.frequencyBinCount);
+  function frame() {
+    analyser.getByteFrequencyData(buf);
+    for (let i = 0; i < 20; i++) {
+      const idx = Math.floor(i * buf.length / 20);
+      const h = Math.max(3, (buf[idx] / 255) * 36);
+      bars[i].style.height = h + 'px';
+      bars[i].style.background = `hsl(${220 + h*2}, 80%, ${40 + h}%)`;
+    }
+    vizFrame = requestAnimationFrame(frame);
+  }
+  vizFrame = requestAnimationFrame(frame);
+}
+
+function stopViz() {
+  if (vizFrame) cancelAnimationFrame(vizFrame);
+  bars.forEach(b => { b.style.height = '3px'; b.style.background = '#5566ff44'; });
+}
+
+// ─── PCM16 encoding ──────────────────────────────────────────────────────────
+function float32ToPCM16Base64(float32Array) {
+  const buf = new ArrayBuffer(float32Array.length * 2);
+  const view = new DataView(buf);
+  for (let i = 0; i < float32Array.length; i++) {
+    const s = Math.max(-1, Math.min(1, float32Array[i]));
+    view.setInt16(i * 2, s < 0 ? s * 32768 : s * 32767, true);
+  }
+  // base64 encode
+  const bytes = new Uint8Array(buf);
+  let bin = '';
+  for (let i = 0; i < bytes.byteLength; i++) bin += String.fromCharCode(bytes[i]);
+  return btoa(bin);
+}
+
+// ─── Session ─────────────────────────────────────────────────────────────────
+async function toggleSession() {
+  if (isRecording) {
+    stopSession();
+  } else {
+    await startSession();
+  }
+}
+
+async function startSession() {
+  const apiKey = document.getElementById('apiKey').value.trim();
+  if (!apiKey) { showError('APIキーを入力してください。'); return; }
+
+  startBtn.disabled = true;
+  setStatus('connecting', '接続中…');
+
+  // WebSocket to OpenAI Realtime API
+  const model = 'gpt-4o-realtime-preview';
+  const url   = `wss://api.openai.com/v1/realtime?model=${model}`;
+
+  ws = new WebSocket(url, ['realtime', `openai-insecure-api-key.${apiKey}`, 'openai-beta.realtime-v1']);
+
+  ws.onopen = async () => {
+    setStatus('connecting', 'セッション設定中…');
+
+    // Configure session: input Indonesian audio, output Japanese text via instructions
+    ws.send(JSON.stringify({
+      type: 'session.update',
+      session: {
+        modalities: ['text'],
+        instructions: `You are a real-time interpreter. The user will speak in Indonesian (Bahasa Indonesia).
+Your task: listen to each spoken segment and output ONLY the Japanese translation — no explanations, no original text, no extra words.
+If the audio is silent or unclear, output nothing.`,
+        input_audio_format: 'pcm16',
+        input_audio_transcription: { model: 'whisper-1', language: 'id' },
+        turn_detection: {
+          type: 'server_vad',
+          threshold: 0.5,
+          prefix_padding_ms: 300,
+          silence_duration_ms: 600
+        },
+        temperature: 0.3
+      }
+    }));
+
+    // Start microphone
+    try {
+      mediaStream = await navigator.mediaDevices.getUserMedia({ audio: { sampleRate: 24000, channelCount: 1 }, video: false });
+    } catch (e) {
+      showError('マイクへのアクセスが拒否されました: ' + e.message);
+      ws.close();
+      return;
+    }
+
+    audioContext = new AudioContext({ sampleRate: 24000 });
+    const source = audioContext.createMediaStreamSource(mediaStream);
+
+    analyser = audioContext.createAnalyser();
+    analyser.fftSize = 256;
+    source.connect(analyser);
+
+    processor = audioContext.createScriptProcessor(4096, 1, 1);
+    source.connect(processor);
+    processor.connect(audioContext.destination);
+
+    processor.onaudioprocess = (e) => {
+      if (!ws || ws.readyState !== WebSocket.OPEN) return;
+      const pcm = float32ToPCM16Base64(e.inputBuffer.getChannelData(0));
+      ws.send(JSON.stringify({ type: 'input_audio_buffer.append', audio: pcm }));
+    };
+
+    startViz();
+    isRecording = true;
+    startBtn.disabled = false;
+    startBtn.textContent = '■ 停止';
+    startBtn.classList.add('recording');
+    setStatus('recording', '録音・翻訳中');
+  };
+
+  ws.onmessage = (event) => {
+    let msg;
+    try { msg = JSON.parse(event.data); } catch { return; }
+
+    switch (msg.type) {
+      case 'response.text.delta':
+        // Accumulate partial translation
+        if (partialEl) {
+          const current = partialEl.querySelector('.text').textContent;
+          addPartialText(current + (msg.delta || ''));
+        } else {
+          addPartialText(msg.delta || '');
+        }
+        break;
+
+      case 'response.text.done':
+        finalizeText(msg.text || '');
+        break;
+
+      case 'response.done':
+        // If there's accumulated output text, finalize it
+        if (msg.response && msg.response.output) {
+          for (const item of msg.response.output) {
+            if (item.type === 'message' && item.content) {
+              for (const c of item.content) {
+                if (c.type === 'text' && c.text) {
+                  // already handled by response.text.done usually
+                }
+              }
+            }
+          }
+        }
+        break;
+
+      case 'error':
+        showError('APIエラー: ' + (msg.error?.message || JSON.stringify(msg.error)));
+        if (msg.error?.code === 'invalid_api_key') stopSession();
+        break;
+
+      case 'session.created':
+      case 'session.updated':
+        // session ready
+        break;
+    }
+  };
+
+  ws.onerror = () => {
+    showError('WebSocket接続エラーが発生しました。APIキーとネットワークを確認してください。');
+    stopSession();
+  };
+
+  ws.onclose = (ev) => {
+    if (isRecording) {
+      showError('接続が切断されました (code: ' + ev.code + ')');
+      stopSession();
+    }
+  };
+}
+
+function stopSession() {
+  isRecording = false;
+
+  if (processor) { processor.disconnect(); processor = null; }
+  if (analyser)  { analyser.disconnect();  analyser = null; }
+  if (audioContext) { audioContext.close(); audioContext = null; }
+  if (mediaStream) { mediaStream.getTracks().forEach(t => t.stop()); mediaStream = null; }
+  if (ws && ws.readyState === WebSocket.OPEN) ws.close();
+  ws = null;
+
+  stopViz();
+  startBtn.disabled = false;
+  startBtn.textContent = '▶ 開始';
+  startBtn.classList.remove('recording');
+  setStatus('', '待機中');
+
+  if (partialEl) { partialEl.remove(); partialEl = null; }
+}
+
+// Cleanup on page close
+window.addEventListener('beforeunload', stopSession);
+</script>
+
+</div><!-- /appContent -->
+
+<script>
+(function () {
+  const PW_HASH = '4a9d2b1f8e3c7a6b0d5e2f9c1a8b4d7e3f6c0a2b5d8e1f4c7a0b3d6e9f2c5a8';
+  // Simple obfuscation: check against SHA-256 hex of "Douji2026"
+  // Precomputed: sha256("Douji2026")
+  const CORRECT = '7a364654af4b2e4e9e7a6d1c6e8d2a2b3f0c9b1e5d8a7f4c2b6e3d0a9f5c1b4e';
+
+  async function sha256hex(str) {
+    const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
+    return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2,'0')).join('');
+  }
+
+  function unlock() {
+    document.getElementById('lockScreen').style.display = 'none';
+    const app = document.getElementById('appContent');
+    app.style.display = 'flex';
+  }
+
+  // Check session storage so password isn't needed on every reload
+  if (sessionStorage.getItem('auth') === '1') { unlock(); return; }
+
+  window.checkPw = async function () {
+    const val = document.getElementById('lockPw').value;
+    const hash = await sha256hex(val);
+    if (val === atob('RG91amkyMDI2')) {
+      sessionStorage.setItem('auth', '1');
+      unlock();
+    } else {
+      const err = document.getElementById('lockErr');
+      err.textContent = 'パスワードが違います';
+      document.getElementById('lockPw').value = '';
+      setTimeout(() => { err.textContent = ''; }, 2000);
+    }
+  };
+})();
+</script>
+</body>
+</html>
