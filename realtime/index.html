@@ -251,7 +251,7 @@
 <div id="appContent" style="display:none; width:100%; display:none; flex-direction:column; align-items:center;">
 
 <h1>🎙️ バハサ→日本語 リアルタイム翻訳</h1>
-<p class="subtitle">インドネシア語音声を日本語テキストにリアルタイム変換 <small style="opacity:0.4">v13</small></p>
+<p class="subtitle">インドネシア語音声を日本語テキストにリアルタイム変換 <small style="opacity:0.4">v14</small></p>
 
 <div class="card">
   <label>OpenAI API キー</label>
@@ -528,15 +528,19 @@ async function startSession() {
     dc.onclose = () => { if (isRecording) { showError('接続が切断されました'); stopSession(); } };
 
     // SDP offer
-    const offer = await pc.createOffer();
-    await pc.setLocalDescription(offer);
+    let offer;
+    try { offer = await pc.createOffer(); } catch(e) { showError('createOffer失敗: ' + e.message); stopSession(); return; }
+    try { await pc.setLocalDescription(offer); } catch(e) { showError('setLocalDesc失敗: ' + e.message); stopSession(); return; }
 
     // Exchange SDP with OpenAI directly using API key
-    const sdpRes = await fetch(`https://api.openai.com/v1/realtime?model=${model}`, {
-      method: 'POST',
-      headers: { 'Authorization': 'Bearer ' + apiKey, 'Content-Type': 'application/sdp' },
-      body: offer.sdp
-    });
+    let sdpRes;
+    try {
+      sdpRes = await fetch(`https://api.openai.com/v1/realtime?model=${model}`, {
+        method: 'POST',
+        headers: { 'Authorization': 'Bearer ' + apiKey, 'Content-Type': 'application/sdp' },
+        body: offer.sdp
+      });
+    } catch(e) { showError('fetch失敗: ' + e.message); stopSession(); return; }
 
     if (!sdpRes.ok) {
       const txt = await sdpRes.text();
@@ -544,8 +548,9 @@ async function startSession() {
       stopSession(); return;
     }
 
-    const answerSdp = await sdpRes.text();
-    await pc.setRemoteDescription({ type: 'answer', sdp: answerSdp });
+    let answerSdp;
+    try { answerSdp = await sdpRes.text(); } catch(e) { showError('SDP読取失敗: ' + e.message); stopSession(); return; }
+    try { await pc.setRemoteDescription({ type: 'answer', sdp: answerSdp }); } catch(e) { showError('setRemoteDesc失敗: ' + e.message); stopSession(); return; }
 
   } catch(e) {
     showError('接続失敗: ' + e.name + ': ' + e.message);
