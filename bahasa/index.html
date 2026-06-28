@@ -212,6 +212,8 @@ const genres = [
       { bahasa: "Baik baik saja.", katakana: "バイク バイク サジャ", japanese: "元気です。（普通）" },
       { bahasa: "Bagaimana dengan Anda?", katakana: "バガイマナ ドゥンガン アンダ？", japanese: "あなたは？（丁寧）" },
       { bahasa: "Kalau kamu?", katakana: "カラウ カムー？", japanese: "あなたは？（カジュアル）" },
+      { bahasa: "Selamat tidur.", katakana: "スラマット ティドゥル", japanese: "おやすみなさい。" },
+      { bahasa: "Selamat istirahat.", katakana: "スラマット イスティラハット", japanese: "ゆっくり休んでください。" },
       { bahasa: "Sampai jumpa.", katakana: "サンパイ ジュンパ", japanese: "またね。さようなら。" },
       { bahasa: "Sampai nanti.", katakana: "サンパイ ナンティ", japanese: "またあとで。" },
       { bahasa: "Selamat tinggal.", katakana: "スラマット ティンガル", japanese: "お元気で。（立ち去る側が言う）" },
@@ -253,10 +255,47 @@ const genres = [
     ]
   },
   {
+    id: "question",
+    label: "疑問詞",
+    phrases: [
+      { bahasa: "Apa?", katakana: "アパ？", japanese: "何？" },
+      { bahasa: "Siapa?", katakana: "シアパ？", japanese: "誰？" },
+      { bahasa: "Di mana?", katakana: "ディ マナ？", japanese: "どこ？" },
+      { bahasa: "Ke mana?", katakana: "ク マナ？", japanese: "どこへ？" },
+      { bahasa: "Dari mana?", katakana: "ダリ マナ？", japanese: "どこから？" },
+      { bahasa: "Kapan?", katakana: "カパン？", japanese: "いつ？" },
+      { bahasa: "Mengapa?", katakana: "ムンガパ？", japanese: "なぜ？（丁寧）" },
+      { bahasa: "Kenapa?", katakana: "クナパ？", japanese: "なぜ？（口語）" },
+      { bahasa: "Bagaimana?", katakana: "バガイマナ？", japanese: "どのように？" },
+      { bahasa: "Berapa?", katakana: "ブラパ？", japanese: "いくつ？いくら？" },
+      { bahasa: "Yang mana?", katakana: "ヤン マナ？", japanese: "どれ？" },
+    ]
+  },
+  {
+    id: "food",
+    label: "食事での会話",
+    phrases: [
+      { bahasa: "Meja untuk dua orang.", katakana: "メジャ ウントゥック ドゥア オラン", japanese: "2名です。" },
+      { bahasa: "Boleh saya lihat menunya?", katakana: "ボレ サヤ リハット メニュニャ？", japanese: "メニューを見せてもらえますか？" },
+      { bahasa: "Saya mau pesan ini.", katakana: "サヤ マウ プサン イニ", japanese: "これを注文します。" },
+      { bahasa: "Rekomendasinya apa?", katakana: "レコメンダシニャ アパ？", japanese: "おすすめは何ですか？" },
+      { bahasa: "Tidak pedas, ya.", katakana: "ティダック プダス、ヤ", japanese: "辛くしないでください。" },
+      { bahasa: "Enak sekali!", katakana: "エナック スカリ！", japanese: "とても美味しいです！" },
+      { bahasa: "Minta bon-nya.", katakana: "ミンタ ボンニャ", japanese: "お会計をお願いします。" },
+      { bahasa: "Bayar terpisah.", katakana: "バヤル トゥルピサ", japanese: "別々に払います。" },
+      { bahasa: "Selamat makan!", katakana: "スラマット マカン！", japanese: "いただきます！召し上がれ！" },
+      { bahasa: "Sudah makan?", katakana: "スダー マカン？", japanese: "もう食べましたか？" },
+      { bahasa: "Kamu suka kopi panas atau dingin?", katakana: "カムー スカ コピ パナス アタウ ディンギン？", japanese: "ホットコーヒーとアイスコーヒー、どちらが好きですか？" },
+      { bahasa: "Ayo kita makan bersama!", katakana: "アヨ キタ マカン ブルサマ！", japanese: "一緒に食べましょう！" },
+    ]
+  },
+  {
     id: "driver",
     label: "運転手との会話",
     phrases: [
       { bahasa: "Tolong antar saya ke ...", katakana: "トロン アンタル サヤ ク ...", japanese: "...まで連れて行ってください。" },
+      { bahasa: "Saya pulang.", katakana: "サヤ プラン", japanese: "家に帰ります。" },
+      { bahasa: "Kami tiba lebih awal, tolong tunggu di sekitar sini.", katakana: "カミ ティバ レビ アワル、トロン トゥングー ディ スキタル シニ", japanese: "早く着いたので、近くで待機しておいてください。" },
       { bahasa: "Berapa ongkosnya?", katakana: "ブラパ オンコスニャ？", japanese: "料金はいくらですか？" },
       { bahasa: "Tolong gunakan argometer.", katakana: "トロン グナカン アルゴメーテル", japanese: "メーターを使ってください。" },
       { bahasa: "Tolong lebih pelan.", katakana: "トロン レビ プラン", japanese: "もっとゆっくり走ってください。" },
