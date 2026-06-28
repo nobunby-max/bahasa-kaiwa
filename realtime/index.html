@@ -251,7 +251,7 @@
 <div id="appContent" style="display:none; width:100%; display:none; flex-direction:column; align-items:center;">
 
 <h1>🎙️ バハサ→日本語 リアルタイム翻訳</h1>
-<p class="subtitle">インドネシア語音声を日本語テキストにリアルタイム変換 <small style="opacity:0.4">v16</small></p>
+<p class="subtitle">インドネシア語音声を日本語テキストにリアルタイム変換 <small style="opacity:0.4">v17</small></p>
 
 <div class="card">
   <label>OpenAI API キー</label>
@@ -471,20 +471,23 @@ async function startSession() {
   recognition.continuous = true;
   recognition.interimResults = true;
 
-  recognition.onresult = async (event) => {
+  recognition.onresult = (event) => {
     for (let i = event.resultIndex; i < event.results.length; i++) {
       if (event.results[i].isFinal) {
         const text = event.results[i][0].transcript.trim();
         if (!text) continue;
         addPartialText('翻訳中: ' + text);
-        try {
-          const japanese = await translateToJapanese(apiKey, text);
-          if (japanese) finalizeText(japanese);
-          else if (partialEl) { partialEl.remove(); partialEl = null; }
-        } catch(e) {
-          showError(e.message);
-          if (partialEl) { partialEl.remove(); partialEl = null; }
-        }
+        // Defer fetch outside native callback to avoid iOS restrictions
+        setTimeout(async () => {
+          try {
+            const japanese = await translateToJapanese(apiKey, text);
+            if (japanese) finalizeText(japanese);
+            else if (partialEl) { partialEl.remove(); partialEl = null; }
+          } catch(e) {
+            showError(e.message);
+            if (partialEl) { partialEl.remove(); partialEl = null; }
+          }
+        }, 0);
       } else {
         addPartialText(event.results[i][0].transcript);
       }
