@@ -251,7 +251,7 @@
 <div id="appContent" style="display:none; width:100%; display:none; flex-direction:column; align-items:center;">
 
 <h1>🎙️ バハサ→日本語 リアルタイム翻訳</h1>
-<p class="subtitle">インドネシア語音声を日本語テキストにリアルタイム変換 <small style="opacity:0.4">v6</small></p>
+<p class="subtitle">インドネシア語音声を日本語テキストにリアルタイム変換 <small style="opacity:0.4">v7</small></p>
 
 <div class="card">
   <label>OpenAI API キー</label>
@@ -458,7 +458,7 @@ async function startSession() {
   setStatus('connecting', '接続中…');
 
   // WebSocket to OpenAI Realtime API
-  const model = 'gpt-4o-realtime-preview';
+  const model = 'gpt-4o-realtime-preview-2024-12-17';
   const url   = `wss://api.openai.com/v1/realtime?model=${model}`;
 
   ws = new WebSocket(url, ['realtime', `openai-insecure-api-key.${apiKey}`, 'openai-beta.realtime-v1']);
@@ -475,7 +475,7 @@ async function startSession() {
 Your task: listen to each spoken segment and output ONLY the Japanese translation — no explanations, no original text, no extra words.
 If the audio is silent or unclear, output nothing.`,
         input_audio_format: 'pcm16',
-        input_audio_transcription: { model: 'whisper-1', language: 'id' },
+        input_audio_transcription: { model: 'whisper-1' },
         turn_detection: {
           type: 'server_vad',
           threshold: 0.5,
