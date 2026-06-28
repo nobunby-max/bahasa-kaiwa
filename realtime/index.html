@@ -457,7 +457,7 @@ If the audio is silent or unclear, output nothing.`,
 
     // Start microphone
     try {
-      mediaStream = await navigator.mediaDevices.getUserMedia({ audio: { sampleRate: 24000, channelCount: 1 }, video: false });
+      mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
     } catch (e) {
       showError('マイクへのアクセスが拒否されました: ' + e.message);
       ws.close();
