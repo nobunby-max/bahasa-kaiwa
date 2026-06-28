@@ -140,6 +140,45 @@
       color: #a0aec0;
       padding: 4px 16px 12px;
     }
+
+    .time-table-card {
+      background: white;
+      border-radius: 16px;
+      padding: 20px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.07);
+      max-width: 680px;
+      margin: 0 auto 16px;
+    }
+
+    .time-table-card table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    .time-table-card th {
+      background: #c8102e;
+      color: white;
+      padding: 10px 12px;
+      font-size: 0.85rem;
+      text-align: left;
+    }
+
+    .time-table-card th:first-child { border-radius: 8px 0 0 0; }
+    .time-table-card th:last-child { border-radius: 0 8px 0 0; }
+
+    .time-table-card td {
+      padding: 12px;
+      border-bottom: 1px solid #e2e8f0;
+      font-size: 0.9rem;
+      vertical-align: middle;
+    }
+
+    .time-table-card tr:last-child td { border-bottom: none; }
+    .time-table-card tr:nth-child(even) td { background: #fafafa; }
+
+    .td-bahasa { font-weight: 700; font-size: 1rem; color: #1a202c; }
+    .td-katakana { color: #718096; font-size: 0.85rem; margin-top: 3px; }
+    .td-time { color: #c8102e; font-weight: 600; white-space: nowrap; }
   </style>
 </head>
 <body>
@@ -159,11 +198,13 @@ const genres = [
   {
     id: "greetings",
     label: "一般的な挨拶",
+    timeTable: [
+      { bahasa: "Selamat pagi", katakana: "スラマット パギ", japanese: "おはようございます", time: "04:00〜10:00" },
+      { bahasa: "Selamat siang", katakana: "スラマット シアン", japanese: "こんにちは（昼）", time: "10:00〜15:00" },
+      { bahasa: "Selamat sore", katakana: "スラマット ソレ", japanese: "こんにちは（夕方）", time: "15:00〜19:00" },
+      { bahasa: "Selamat malam", katakana: "スラマット マラム", japanese: "こんばんは", time: "19:00〜03:00" },
+    ],
     phrases: [
-      { bahasa: "Selamat pagi", katakana: "スラマット パギ", japanese: "おはようございます" },
-      { bahasa: "Selamat siang", katakana: "スラマット シアン", japanese: "こんにちは（昼）" },
-      { bahasa: "Selamat sore", katakana: "スラマット ソレ", japanese: "こんにちは（夕方）" },
-      { bahasa: "Selamat malam", katakana: "スラマット マラム", japanese: "こんばんは" },
       { bahasa: "Apa kabar?", katakana: "アパ カバル？", japanese: "お元気ですか？" },
       { bahasa: "Baik, terima kasih.", katakana: "バイク、トゥリマ カシ", japanese: "元気です、ありがとう。" },
       { bahasa: "Sampai jumpa.", katakana: "サンパイ ジュンパ", japanese: "またね。さようなら。" },
@@ -256,6 +297,29 @@ function renderPhrases() {
 
   const list = document.getElementById("phraseList");
   list.innerHTML = "";
+
+  if (genre.timeTable) {
+    const card = document.createElement("div");
+    card.className = "time-table-card";
+    const table = document.createElement("table");
+    const thead = document.createElement("thead");
+    thead.innerHTML = "<tr><th>フレーズ</th><th>カタカナ</th><th>意味</th><th>時間帯</th></tr>";
+    table.appendChild(thead);
+    const tbody = document.createElement("tbody");
+    genre.timeTable.forEach(row => {
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+        <td><div class="td-bahasa">${row.bahasa}</div></td>
+        <td><div class="td-katakana">${row.katakana}</div></td>
+        <td>${row.japanese}</td>
+        <td class="td-time">${row.time}</td>
+      `;
+      tbody.appendChild(tr);
+    });
+    table.appendChild(tbody);
+    card.appendChild(table);
+    list.appendChild(card);
+  }
 
   genre.phrases.forEach((p, i) => {
     const card = document.createElement("div");
