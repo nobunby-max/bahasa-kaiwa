@@ -251,7 +251,7 @@
 <div id="appContent" style="display:none; width:100%; display:none; flex-direction:column; align-items:center;">
 
 <h1>🎙️ バハサ→日本語 リアルタイム翻訳</h1>
-<p class="subtitle">インドネシア語音声を日本語テキストにリアルタイム変換 <small style="opacity:0.4">v10</small></p>
+<p class="subtitle">インドネシア語音声を日本語テキストにリアルタイム変換 <small style="opacity:0.4">v11</small></p>
 
 <div class="card">
   <label>OpenAI API キー</label>
@@ -293,6 +293,8 @@
 <script>
 // ─── State ───────────────────────────────────────────────────────────────────
 let ws = null;
+let pc = null;
+let dc = null;
 let mediaStream = null;
 let audioContext = null;
 let processor = null;
@@ -455,144 +457,106 @@ async function startSession() {
     return;
   }
 
-  setStatus('connecting', 'セッション取得中…');
-
-  // Step 1: Get ephemeral token from OpenAI
-  const model = 'gpt-4o-realtime-preview-2024-12-17';
-  let ephemeralKey;
-  try {
-    const sessionRes = await fetch('https://api.openai.com/v1/realtime/sessions', {
-      method: 'POST',
-      headers: { 'Authorization': 'Bearer ' + apiKey, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ model })
-    });
-    if (!sessionRes.ok) {
-      const err = await sessionRes.json().catch(() => ({}));
-      showError('セッション取得エラー: ' + (err.error?.message || sessionRes.status));
-      startBtn.disabled = false; setStatus('idle', '待機中'); stopSession(); return;
-    }
-    const sessionData = await sessionRes.json();
-    ephemeralKey = sessionData.client_secret?.value;
-    if (!ephemeralKey) throw new Error('client_secret not found');
-  } catch (e) {
-    showError('セッション取得失敗: ' + e.message);
-    startBtn.disabled = false; setStatus('idle', '待機中'); stopSession(); return;
-  }
-
   setStatus('connecting', '接続中…');
 
-  // Step 2: Connect WebSocket with ephemeral key
-  const url = `wss://api.openai.com/v1/realtime?model=${model}`;
-  ws = new WebSocket(url, ['realtime', `openai-insecure-api-key.${ephemeralKey}`, 'openai-beta.realtime-v1']);
+  // WebRTC approach (OpenAI recommended for browser clients)
+  const model = 'gpt-4o-realtime-preview-2024-12-17';
 
-  ws.onopen = async () => {
-    setStatus('connecting', 'セッション設定中…');
+  try {
+    pc = new RTCPeerConnection();
 
-    ws.send(JSON.stringify({
-      type: 'session.update',
-      session: {
-        modalities: ['text'],
-        instructions: `You are a real-time interpreter. The user will speak in Indonesian (Bahasa Indonesia). Your task: listen to each spoken segment and output ONLY the Japanese translation — no explanations, no original text, no extra words. If the audio is silent or unclear, output nothing.`,
-        input_audio_format: 'pcm16',
-        input_audio_transcription: { model: 'whisper-1' },
-        turn_detection: { type: 'server_vad', threshold: 0.5, prefix_padding_ms: 300, silence_duration_ms: 600 },
-        temperature: 0.3
-      }
-    }));
-
+    // Audio viz via Web Audio
     audioContext = new AudioContext();
-    const source = audioContext.createMediaStreamSource(mediaStream);
-
     analyser = audioContext.createAnalyser();
     analyser.fftSize = 256;
+    const source = audioContext.createMediaStreamSource(mediaStream);
     source.connect(analyser);
 
-    processor = audioContext.createScriptProcessor(4096, 1, 1);
-    source.connect(processor);
-    processor.connect(audioContext.destination);
+    // Add mic track to peer connection
+    mediaStream.getTracks().forEach(t => pc.addTrack(t, mediaStream));
 
-    processor.onaudioprocess = (e) => {
-      if (!ws || ws.readyState !== WebSocket.OPEN) return;
-      const pcm = float32ToPCM16Base64(e.inputBuffer.getChannelData(0), audioContext.sampleRate);
-      ws.send(JSON.stringify({ type: 'input_audio_buffer.append', audio: pcm }));
+    // Data channel for sending/receiving events
+    dc = pc.createDataChannel('oai-events');
+
+    dc.onopen = () => {
+      // Configure session
+      dc.send(JSON.stringify({
+        type: 'session.update',
+        session: {
+          modalities: ['text'],
+          instructions: `You are a real-time interpreter. The user will speak in Indonesian (Bahasa Indonesia). Your task: listen to each spoken segment and output ONLY the Japanese translation — no explanations, no original text, no extra words. If the audio is silent or unclear, output nothing.`,
+          input_audio_transcription: { model: 'whisper-1' },
+          turn_detection: { type: 'server_vad', threshold: 0.5, prefix_padding_ms: 300, silence_duration_ms: 600 },
+          temperature: 0.3
+        }
+      }));
+      startViz();
+      isRecording = true;
+      startBtn.disabled = false;
+      startBtn.textContent = '■ 停止';
+      startBtn.classList.add('recording');
+      setStatus('recording', '録音・翻訳中');
     };
 
-    startViz();
-    isRecording = true;
-    startBtn.disabled = false;
-    startBtn.textContent = '■ 停止';
-    startBtn.classList.add('recording');
-    setStatus('recording', '録音・翻訳中');
-  };
-
-  ws.onmessage = (event) => {
-    let msg;
-    try { msg = JSON.parse(event.data); } catch { return; }
-
-    switch (msg.type) {
-      case 'response.text.delta':
-        // Accumulate partial translation
-        if (partialEl) {
-          const current = partialEl.querySelector('.text').textContent;
-          addPartialText(current + (msg.delta || ''));
-        } else {
-          addPartialText(msg.delta || '');
-        }
-        break;
-
-      case 'response.text.done':
-        finalizeText(msg.text || '');
-        break;
-
-      case 'response.done':
-        // If there's accumulated output text, finalize it
-        if (msg.response && msg.response.output) {
-          for (const item of msg.response.output) {
-            if (item.type === 'message' && item.content) {
-              for (const c of item.content) {
-                if (c.type === 'text' && c.text) {
-                  // already handled by response.text.done usually
-                }
-              }
-            }
+    dc.onmessage = (e) => {
+      let msg;
+      try { msg = JSON.parse(e.data); } catch { return; }
+      switch (msg.type) {
+        case 'response.text.delta':
+          if (partialEl) {
+            addPartialText(partialEl.querySelector('.text').textContent + (msg.delta || ''));
+          } else {
+            addPartialText(msg.delta || '');
           }
-        }
-        break;
+          break;
+        case 'response.text.done':
+          finalizeText(msg.text || '');
+          break;
+        case 'error':
+          showError('APIエラー: ' + (msg.error?.message || JSON.stringify(msg.error)));
+          break;
+      }
+    };
 
-      case 'error':
-        showError('APIエラー: ' + (msg.error?.message || JSON.stringify(msg.error)));
-        if (msg.error?.code === 'invalid_api_key') stopSession();
-        break;
+    dc.onclose = () => { if (isRecording) { showError('接続が切断されました'); stopSession(); } };
 
-      case 'session.created':
-      case 'session.updated':
-        // session ready
-        break;
+    // SDP offer
+    const offer = await pc.createOffer();
+    await pc.setLocalDescription(offer);
+
+    // Exchange SDP with OpenAI directly using API key
+    const sdpRes = await fetch(`https://api.openai.com/v1/realtime?model=${model}`, {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + apiKey, 'Content-Type': 'application/sdp' },
+      body: offer.sdp
+    });
+
+    if (!sdpRes.ok) {
+      const txt = await sdpRes.text();
+      showError('接続エラー: ' + sdpRes.status + ' ' + txt.slice(0, 100));
+      stopSession(); return;
     }
-  };
 
-  ws.onerror = () => {
-    showError('WebSocket接続エラーが発生しました。APIキーとネットワークを確認してください。');
+    const answerSdp = await sdpRes.text();
+    await pc.setRemoteDescription({ type: 'answer', sdp: answerSdp });
+
+  } catch(e) {
+    showError('接続失敗: ' + e.message);
     stopSession();
-  };
-
-  ws.onclose = (ev) => {
-    if (isRecording) {
-      showError('接続が切断されました (code: ' + ev.code + ') ' + (ev.reason || ''));
-      stopSession();
-    }
-  };
+  }
 }
 
 function stopSession() {
   isRecording = false;
 
+  if (dc) { try { dc.close(); } catch(_){} dc = null; }
+  if (pc) { pc.close(); pc = null; }
+  if (ws && ws.readyState === WebSocket.OPEN) ws.close();
+  ws = null;
   if (processor) { processor.disconnect(); processor = null; }
   if (analyser)  { analyser.disconnect();  analyser = null; }
   if (audioContext) { audioContext.close(); audioContext = null; }
   if (mediaStream) { mediaStream.getTracks().forEach(t => t.stop()); mediaStream = null; }
-  if (ws && ws.readyState === WebSocket.OPEN) ws.close();
-  ws = null;
 
   stopViz();
   startBtn.disabled = false;
