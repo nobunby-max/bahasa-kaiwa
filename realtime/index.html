@@ -251,7 +251,7 @@
 <div id="appContent" style="display:none; width:100%; display:none; flex-direction:column; align-items:center;">
 
 <h1>🎙️ バハサ→日本語 リアルタイム翻訳</h1>
-<p class="subtitle">インドネシア語音声を日本語テキストにリアルタイム変換 <small style="opacity:0.4">v11</small></p>
+<p class="subtitle">インドネシア語音声を日本語テキストにリアルタイム変換 <small style="opacity:0.4">v12</small></p>
 
 <div class="card">
   <label>OpenAI API キー</label>
@@ -463,7 +463,9 @@ async function startSession() {
   const model = 'gpt-4o-realtime-preview-2024-12-17';
 
   try {
-    pc = new RTCPeerConnection();
+    const RTCPeerConn = window.RTCPeerConnection || window.webkitRTCPeerConnection;
+    if (!RTCPeerConn) { showError('このブラウザはWebRTCに対応していません'); stopSession(); return; }
+    pc = new RTCPeerConn({ iceServers: [] });
 
     // Audio viz via Web Audio
     audioContext = new AudioContext();
@@ -541,7 +543,7 @@ async function startSession() {
     await pc.setRemoteDescription({ type: 'answer', sdp: answerSdp });
 
   } catch(e) {
-    showError('接続失敗: ' + e.message);
+    showError('接続失敗: ' + e.name + ': ' + e.message);
     stopSession();
   }
 }
