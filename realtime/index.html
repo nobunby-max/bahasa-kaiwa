@@ -251,11 +251,13 @@
 <div id="appContent" style="display:none; width:100%; display:none; flex-direction:column; align-items:center;">
 
 <h1>🎙️ バハサ→日本語 リアルタイム翻訳</h1>
-<p class="subtitle">インドネシア語音声を日本語テキストにリアルタイム変換 <small style="opacity:0.4">v21</small></p>
+<p class="subtitle">インドネシア語音声を日本語テキストにリアルタイム変換 <small style="opacity:0.4">v22</small></p>
 
 <div class="card">
   <label style="display:block; font-size:0.85rem; color:#aaa; margin-bottom:6px;">OpenAI API キー</label>
   <input type="password" id="apiKey" placeholder="sk-..." autocomplete="off" style="display:block; width:100%; background:#1a1a24; border:1px solid #2a2a3a; border-radius:8px; color:#e8e8f0; font-size:0.95rem; padding:10px 14px; margin-bottom:12px; outline:none;">
+  <label style="display:block; font-size:0.85rem; color:#aaa; margin-bottom:6px; margin-top:4px;">プロキシURL（Cloudflare Worker）</label>
+  <input type="text" id="proxyUrl" placeholder="https://xxxx.workers.dev" autocomplete="off" style="display:block; width:100%; background:#1a1a24; border:1px solid #2a2a3a; border-radius:8px; color:#e8e8f0; font-size:0.95rem; padding:10px 14px; margin-bottom:12px; outline:none;">
 
   <div id="visualizer">
     <div class="bar" id="b0"></div><div class="bar" id="b1"></div>
@@ -394,12 +396,16 @@ function stopViz() {
   bars.forEach(b => { b.style.height = '3px'; b.style.background = '#5566ff44'; });
 }
 
-// ─── Translation (GPT-4o mini via XHR) ──────────────────────────────────────
+// ─── Translation (GPT-4o mini via Cloudflare Worker proxy) ──────────────────
 function translateToJapanese(apiKey, indonesian) {
+  const proxyUrl = (document.getElementById('proxyUrl').value.trim() || '').replace(/\/$/, '');
+  if (!proxyUrl) {
+    return Promise.reject(new Error('プロキシURLを入力してください（Cloudflare WorkerのURL）'));
+  }
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
-    xhr.open('POST', 'https://api.openai.com/v1/chat/completions', true);
-    xhr.setRequestHeader('Authorization', 'Bearer ' + apiKey);
+    xhr.open('POST', proxyUrl, true);
+    xhr.setRequestHeader('X-Api-Key', apiKey);
     xhr.setRequestHeader('Content-Type', 'application/json');
     xhr.timeout = 15000;
     xhr.onload = function() {
