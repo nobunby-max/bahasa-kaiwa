@@ -251,7 +251,7 @@
 <div id="appContent" style="display:none; width:100%; display:none; flex-direction:column; align-items:center;">
 
 <h1>🎙️ バハサ→日本語 リアルタイム翻訳</h1>
-<p class="subtitle">インドネシア語音声を日本語テキストにリアルタイム変換 <small style="opacity:0.4">v20</small></p>
+<p class="subtitle">インドネシア語音声を日本語テキストにリアルタイム変換 <small style="opacity:0.4">v21</small></p>
 
 <div class="card">
   <label style="display:block; font-size:0.85rem; color:#aaa; margin-bottom:6px;">OpenAI API キー</label>
@@ -394,37 +394,43 @@ function stopViz() {
   bars.forEach(b => { b.style.height = '3px'; b.style.background = '#5566ff44'; });
 }
 
-// ─── Translation (GPT-4o mini) ───────────────────────────────────────────────
-async function translateToJapanese(apiKey, indonesian) {
-  const res = await fetch('https://api.openai.com/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Authorization': 'Bearer ' + apiKey,
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify({
+// ─── Translation (GPT-4o mini via XHR) ──────────────────────────────────────
+function translateToJapanese(apiKey, indonesian) {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', 'https://api.openai.com/v1/chat/completions', true);
+    xhr.setRequestHeader('Authorization', 'Bearer ' + apiKey);
+    xhr.setRequestHeader('Content-Type', 'application/json');
+    xhr.timeout = 15000;
+    xhr.onload = function() {
+      try {
+        const data = JSON.parse(xhr.responseText);
+        if (xhr.status !== 200) {
+          reject(new Error('APIエラー ' + xhr.status + ': ' + (data.error?.message || xhr.responseText.slice(0,80))));
+          return;
+        }
+        const translated = data.choices?.[0]?.message?.content?.trim();
+        if (!translated) reject(new Error('翻訳結果なし'));
+        else resolve(translated);
+      } catch(e) {
+        reject(new Error('レスポンス解析失敗: ' + xhr.status));
+      }
+    };
+    xhr.onerror = function() {
+      reject(new Error('XHRネットワークエラー (CORS またはネットワーク不可)'));
+    };
+    xhr.ontimeout = function() {
+      reject(new Error('タイムアウト (15秒)'));
+    };
+    xhr.send(JSON.stringify({
       model: 'gpt-4o-mini',
       max_tokens: 256,
       messages: [
-        {
-          role: 'system',
-          content: 'You are a professional interpreter. Translate the Indonesian text to natural Japanese. Output only the Japanese translation, nothing else.'
-        },
-        {
-          role: 'user',
-          content: indonesian
-        }
+        { role: 'system', content: 'Translate the Indonesian text to natural Japanese. Output only the Japanese translation, nothing else.' },
+        { role: 'user', content: indonesian }
       ]
-    })
+    }));
   });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error('翻訳エラー: ' + (err.error?.message || res.status));
-  }
-  const data = await res.json();
-  const translated = data.choices?.[0]?.message?.content?.trim();
-  if (!translated) throw new Error('翻訳失敗');
-  return translated;
 }
 
 // ─── Session ─────────────────────────────────────────────────────────────────
