@@ -75,6 +75,13 @@
     .btn-home-map { background: #e94560; color: #fff; }
     .btn-home-upload { background: #fff; color: #1a1a2e; }
     .home-count { margin-top: 40px; font-size: 13px; color: rgba(255,255,255,0.4); }
+    .home-transfer { margin-top: 24px; display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+    .btn-transfer {
+      padding: 10px 20px; border-radius: 50px; border: 1.5px solid rgba(255,255,255,0.25);
+      background: rgba(255,255,255,0.08); color: rgba(255,255,255,0.75);
+      font-size: 13px; font-weight: 600; cursor: pointer; transition: background .15s;
+    }
+    .btn-transfer:hover { background: rgba(255,255,255,0.18); }
 
     /* ── Map View ── */
     #view-map { height: 100vh; display: none; flex-direction: column; }
@@ -144,7 +151,6 @@
     #lightbox.drag-over .lb-drop-hint { display: flex; }
     .lb-drop-hint-icon { font-size: 64px; }
     .lb-drop-hint-text { font-size: 18px; font-weight: 700; color: #fff; }
-    /* 追加中プログレスバー */
     #lb-progress {
       display: none; position: absolute; bottom: 24px; left: 50%; transform: translateX(-50%);
       background: rgba(255,255,255,0.12); border-radius: 50px; padding: 10px 24px;
@@ -368,6 +374,11 @@
     </button>
   </div>
   <p class="home-count" id="home-count">読み込み中…</p>
+  <div class="home-transfer">
+    <button class="btn-transfer" onclick="exportData()">📤 データを書き出す</button>
+    <button class="btn-transfer" onclick="document.getElementById('import-input').click()">📥 データを読み込む</button>
+    <input type="file" id="import-input" accept=".json" style="display:none" onchange="importData(this)">
+  </div>
 </div>
 
 <!-- ╔═ MAP VIEW ══════════════════════════════════════════════════════════════════╗ -->
@@ -383,7 +394,6 @@
 
 <!-- ╔═ LIGHTBOX ══════════════════════════════════════════════════════════════════╗ -->
 <div id="lightbox">
-  <!-- ドラッグ時のオーバーレイ -->
   <div class="lb-drop-hint">
     <span class="lb-drop-hint-icon">📸</span>
     <span class="lb-drop-hint-text">ここにドロップして同じ場所に追加</span>
@@ -471,7 +481,6 @@
       <button class="modal-close" onclick="closeUpload()">✕</button>
     </div>
     <div class="modal-body">
-      <!-- LEFT: Photo + Form -->
       <div class="panel-left">
         <div class="drop-zone" id="drop-zone">
           <input type="file" id="file-input" accept="image/*">
@@ -504,7 +513,6 @@
           </div>
         </div>
       </div>
-      <!-- RIGHT: Mini Map -->
       <div class="panel-right">
         <p class="panel-right-label">🗺️ 地図をクリックして場所を指定</p>
         <div id="mini-map"></div>
@@ -559,9 +567,6 @@
 <div id="toast"></div>
 
 <script>
-// ═══════════════════════════════════════════════════════════════
-// DATA LAYER – IndexedDB（容量大：数百万B《GB）
-// ═══════════════════════════════════════════════════════════════
 const DB = {
   _db: null,
   open() {
@@ -614,7 +619,6 @@ const DB = {
       req.onerror = () => reject(req.error);
     });
   },
-  // 旧localStorageデータを移行
   async migrate() {
     const old = localStorage.getItem('photomap_v1');
     if (!old) return;
@@ -622,14 +626,10 @@ const DB = {
       const photos = JSON.parse(old);
       for (const p of photos) await this.add(p).catch(() => {});
       localStorage.removeItem('photomap_v1');
-      console.log('旧データを移行しました');
     } catch (e) { console.warn('移行エラー:', e); }
   }
 };
 
-// ═══════════════════════════════════════════════════════════════
-// CATEGORY HELPERS
-// ═══════════════════════════════════════════════════════════════
 const CAT_CLASS = {
   'お客様': 'badge-customer',
   '政府・当局関係者': 'badge-government',
@@ -642,9 +642,6 @@ function badgeHTML(cat) {
   return `<span class="badge ${cls}">${cat || 'その他'}</span>`;
 }
 
-// ═══════════════════════════════════════════════════════════════
-// VIEW NAVIGATION
-// ═══════════════════════════════════════════════════════════════
 function showHome() {
   document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
   document.getElementById('view-home').classList.add('active');
@@ -661,9 +658,6 @@ async function updateHomeCount() {
   document.getElementById('home-count').textContent = `現在 ${photos.length} 枚の写真が登録されています`;
 }
 
-// ═══════════════════════════════════════════════════════════════
-// MAIN MAP
-// ═══════════════════════════════════════════════════════════════
 let mainMap = null;
 const markers = [];
 
@@ -692,7 +686,6 @@ async function refreshMapMarkers() {
   document.getElementById('map-count').textContent = `${all.length} 枚`;
   if (!photos.length) return;
 
-  // Group by location
   const groups = {};
   photos.forEach(p => {
     const k = locKey(p);
@@ -737,7 +730,6 @@ async function refreshMapMarkers() {
 
     const popup = new maplibregl.Popup({ offset: 20, maxWidth: group.length > 1 ? '300px' : '220px' })
       .setHTML(popupHTML);
-
     const m = new maplibregl.Marker({ element: el })
       .setLngLat([first.lng, first.lat])
       .setPopup(popup)
@@ -745,7 +737,6 @@ async function refreshMapMarkers() {
     markers.push(m);
   });
 
-  // Fit bounds
   const lngs = photos.map(p=>p.lng), lats = photos.map(p=>p.lat);
   mainMap.fitBounds(
     [[Math.min(...lngs), Math.min(...lats)], [Math.max(...lngs), Math.max(...lats)]],
@@ -753,9 +744,6 @@ async function refreshMapMarkers() {
   );
 }
 
-// ═══════════════════════════════════════════════════════════════
-// LIGHTBOX
-// ═══════════════════════════════════════════════════════════════
 let currentPhotoId = null;
 
 async function openLightbox(id) {
@@ -778,11 +766,9 @@ document.getElementById('lightbox').addEventListener('click', e => {
   if (e.target === document.getElementById('lightbox')) closeLightbox();
 });
 
-// ── ページ全体でドロップによるナビゲーションを防ぐ（Safariで重要） ──
 document.addEventListener('dragover', e => e.preventDefault());
 document.addEventListener('drop', e => e.preventDefault());
 
-// ── ライトボックスの「写真を追加」ボタン（ファイル選択） ──
 document.getElementById('lb-file-input').addEventListener('change', async e => {
   const files = Array.from(e.target.files).filter(f => f.type.startsWith('image/'));
   e.target.value = '';
@@ -809,7 +795,6 @@ document.getElementById('lb-file-input').addEventListener('change', async e => {
   updateHomeCount();
 });
 
-// ── ライトボックスへのドラッグ＆ドロップで同じ場所に写真を追加 ──
 const lb = document.getElementById('lightbox');
 lb.addEventListener('dragover', e => { e.preventDefault(); e.stopPropagation(); if (lb.classList.contains('open')) lb.classList.add('drag-over'); });
 lb.addEventListener('dragleave', e => { if (!lb.contains(e.relatedTarget)) lb.classList.remove('drag-over'); });
@@ -817,59 +802,36 @@ lb.addEventListener('drop', async e => {
   e.preventDefault(); e.stopPropagation();
   lb.classList.remove('drag-over');
   if (!currentPhotoId) return;
-
   const files = Array.from(e.dataTransfer.files).filter(f => f.type.startsWith('image/'));
   if (!files.length) {
-    // 「写真」アプリからのドラッグなどでFileオブジェクトが取得できない場合
     const prog = document.getElementById('lb-progress');
     prog.style.display = 'block';
     prog.textContent = '⚠️ Finderから写真をドラッグしてください（写真アプリ不可）';
     setTimeout(() => { prog.style.display = 'none'; }, 4000);
     return;
   }
-
-  // 現在表示中の写真からメタデータをコピー
   const all = await DB.load();
   const src = all.find(p => p.id === currentPhotoId);
   if (!src) return;
-
   const prog = document.getElementById('lb-progress');
   prog.style.display = 'block';
   let done = 0;
   prog.textContent = `追加中… ${done}/${files.length}`;
-
   for (const file of files) {
     const exifDate = (await getExifDate(file)) || getDateStr(file);
-    const dataUrl = await new Promise(r => {
-      const reader = new FileReader();
-      reader.onload = e2 => r(e2.target.result);
-      reader.readAsDataURL(file);
-    });
+    const dataUrl = await new Promise(r => { const reader = new FileReader(); reader.onload = e2 => r(e2.target.result); reader.readAsDataURL(file); });
     const full = await makeThumbnail(dataUrl, 1600, 0.85);
     const thumbnail = await makeThumbnail(dataUrl, 300, 0.82);
-    await DB.add({
-      id: 'p' + Date.now() + Math.random().toString(36).slice(2),
-      full, thumbnail,
-      date: exifDate,
-      address: src.address,
-      category: src.category,
-      comment: src.comment,
-      lat: src.lat,
-      lng: src.lng
-    });
+    await DB.add({ id: 'p' + Date.now() + Math.random().toString(36).slice(2), full, thumbnail, date: exifDate, address: src.address, category: src.category, comment: src.comment, lat: src.lat, lng: src.lng });
     done++;
     prog.textContent = `追加中… ${done}/${files.length}`;
   }
-
   prog.textContent = `✅ ${files.length}枚を追加しました`;
   setTimeout(() => { prog.style.display = 'none'; }, 2000);
   if (mainMap) refreshMapMarkers();
   updateHomeCount();
 });
 
-// ═══════════════════════════════════════════════════════════════
-// EDIT
-// ═══════════════════════════════════════════════════════════════
 let editMap = null, editMarker = null;
 let editLat = null, editLng = null;
 
@@ -883,7 +845,6 @@ async function openEdit() {
   document.getElementById('edit-category').value = photo.category || '';
   document.getElementById('edit-comment').value = photo.comment || '';
   document.getElementById('modal-edit').classList.add('open');
-
   setTimeout(() => {
     if (!editMap) {
       editMap = new maplibregl.Map({
@@ -913,9 +874,7 @@ function placEditPin(lat, lng, geocode = true) {
   if (editMarker) editMarker.remove();
   const el = document.createElement('div');
   el.className = 'map-marker';
-  editMarker = new maplibregl.Marker({ element: el, draggable: true })
-    .setLngLat([lng, lat])
-    .addTo(editMap);
+  editMarker = new maplibregl.Marker({ element: el, draggable: true }).setLngLat([lng, lat]).addTo(editMap);
   editMarker.on('dragend', async () => {
     const pos = editMarker.getLngLat();
     editLat = pos.lat; editLng = pos.lng;
@@ -924,16 +883,10 @@ function placEditPin(lat, lng, geocode = true) {
     const addr = await reverseGeocode(pos.lat, pos.lng);
     if (addr) document.getElementById('edit-address').value = addr;
   });
-  if (geocode) {
-    reverseGeocode(lat, lng).then(addr => {
-      if (addr) document.getElementById('edit-address').value = addr;
-    });
-  }
+  if (geocode) reverseGeocode(lat, lng).then(addr => { if (addr) document.getElementById('edit-address').value = addr; });
 }
 
-function closeEdit() {
-  document.getElementById('modal-edit').classList.remove('open');
-}
+function closeEdit() { document.getElementById('modal-edit').classList.remove('open'); }
 async function saveEdit() {
   if (!currentPhotoId) return;
   const all = await DB.load();
@@ -959,23 +912,15 @@ async function deletePhoto() {
   showToast('🗑️ 削除しました');
 }
 
-// ═══════════════════════════════════════════════════════════════
-// UPLOAD MODAL
-// ═══════════════════════════════════════════════════════════════
 let miniMap = null, miniMarker = null;
 let selectedLat = null, selectedLng = null;
 let selectedFile = null, fullBase64 = null, thumbBase64 = null, selectedDate = null;
 
 function openUpload() {
   document.getElementById('modal-upload').classList.add('open');
-  setTimeout(() => {
-    if (!miniMap) initMiniMap();
-    else miniMap.resize();
-  }, 100);
+  setTimeout(() => { if (!miniMap) initMiniMap(); else miniMap.resize(); }, 100);
 }
-function closeUpload() {
-  document.getElementById('modal-upload').classList.remove('open');
-}
+function closeUpload() { document.getElementById('modal-upload').classList.remove('open'); }
 
 function initMiniMap() {
   miniMap = new maplibregl.Map({
@@ -985,73 +930,49 @@ function initMiniMap() {
       sources: { osm: { type: 'raster', tiles: ['https://tile.openstreetmap.org/{z}/{x}/{y}.png'], tileSize: 256, attribution: '© OpenStreetMap contributors' } },
       layers: [{ id: 'osm', type: 'raster', source: 'osm' }]
     },
-    center: [117.0, -0.5],
-    zoom: 4
+    center: [117.0, -0.5], zoom: 4
   });
   miniMap.addControl(new maplibregl.NavigationControl(), 'top-right');
-  miniMap.on('click', e => {
-    placePin(e.lngLat.lat, e.lngLat.lng);
-  });
+  miniMap.on('click', e => placePin(e.lngLat.lat, e.lngLat.lng));
 }
 
 async function forwardGeocode(query) {
-  // 1st: Nominatim (OpenStreetMap)
   try {
-    const res = await fetch(
-      `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=1`,
-      { headers: { 'Accept-Language': 'ja' } }
-    );
+    const res = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=1`, { headers: { 'Accept-Language': 'ja' } });
     const data = await res.json();
-    if (data && data[0]) return { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon), display: data[0].display_name, source: 'OSM' };
+    if (data && data[0]) return { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon), display: data[0].display_name };
   } catch {}
-
-  // 2nd: Photon (Komoot) – 異なるエンジンでインドネシア住所に強い
   try {
-    const res = await fetch(
-      `https://photon.komoot.io/api/?q=${encodeURIComponent(query)}&limit=1&lang=ja`
-    );
+    const res = await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(query)}&limit=1&lang=ja`);
     const data = await res.json();
     if (data.features && data.features[0]) {
       const [lng, lat] = data.features[0].geometry.coordinates;
       const p = data.features[0].properties;
-      const display = [p.name, p.street, p.city, p.country].filter(Boolean).join(', ');
-      return { lat, lng, display, source: 'Photon' };
+      return { lat, lng, display: [p.name, p.street, p.city, p.country].filter(Boolean).join(', ') };
     }
   } catch {}
-
   return null;
 }
 
-// Googleマップポップアップから座標を貼り付けるUI
 let _pendingGeoInputId = null, _pendingGeoMapId = null;
 
 function showGoogleMapsFallback(inputId, mapId, query) {
-  _pendingGeoInputId = inputId;
-  _pendingGeoMapId = mapId;
-  const googleUrl = `https://www.google.com/maps/search/${encodeURIComponent(query)}`;
-  document.getElementById('gmaps-link').href = googleUrl;
+  _pendingGeoInputId = inputId; _pendingGeoMapId = mapId;
+  document.getElementById('gmaps-link').href = `https://www.google.com/maps/search/${encodeURIComponent(query)}`;
   document.getElementById('gmaps-query').textContent = `「${query}」`;
   document.getElementById('gmaps-coords-input').value = '';
   document.getElementById('modal-gmaps').style.display = 'flex';
 }
-
 function closeGmaps() { document.getElementById('modal-gmaps').style.display = 'none'; }
 
 function applyGmapsCoords() {
   const raw = document.getElementById('gmaps-coords-input').value.trim();
-  // 受け付けるフォーマット: "lat,lng" または "lat, lng"
   const match = raw.match(/(-?\d+\.?\d*)[,\s]+(-?\d+\.?\d*)/);
   if (!match) { showToast('⚠️ 形式: 緯度,経度 （例: -6.2088,106.8456）'); return; }
   const lat = parseFloat(match[1]), lng = parseFloat(match[2]);
   if (lat < -90 || lat > 90 || lng < -180 || lng > 180) { showToast('⚠️ 座標の値が不正です'); return; }
-
-  if (_pendingGeoMapId === 'mini-map' && miniMap) {
-    miniMap.flyTo({ center: [lng, lat], zoom: 15 });
-    placePin(lat, lng, true);
-  } else if (_pendingGeoMapId === 'edit-mini-map' && editMap) {
-    editMap.flyTo({ center: [lng, lat], zoom: 15 });
-    placEditPin(lat, lng, true);
-  }
+  if (_pendingGeoMapId === 'mini-map' && miniMap) { miniMap.flyTo({ center: [lng, lat], zoom: 15 }); placePin(lat, lng, true); }
+  else if (_pendingGeoMapId === 'edit-mini-map' && editMap) { editMap.flyTo({ center: [lng, lat], zoom: 15 }); placEditPin(lat, lng, true); }
   closeGmaps();
   showToast('✅ 座標を設定しました');
 }
@@ -1064,28 +985,18 @@ async function geocodeAddress(inputId, mapId) {
   btn.disabled = true; btn.textContent = '…';
   const result = await forwardGeocode(query);
   btn.disabled = false; btn.textContent = '🔍';
-
   if (result) {
-    if (mapId === 'mini-map' && miniMap) {
-      miniMap.flyTo({ center: [result.lng, result.lat], zoom: 14 });
-      placePin(result.lat, result.lng, false);
-    } else if (mapId === 'edit-mini-map' && editMap) {
-      editMap.flyTo({ center: [result.lng, result.lat], zoom: 14 });
-      placEditPin(result.lat, result.lng, false);
-    }
+    if (mapId === 'mini-map' && miniMap) { miniMap.flyTo({ center: [result.lng, result.lat], zoom: 14 }); placePin(result.lat, result.lng, false); }
+    else if (mapId === 'edit-mini-map' && editMap) { editMap.flyTo({ center: [result.lng, result.lat], zoom: 14 }); placEditPin(result.lat, result.lng, false); }
     document.getElementById(inputId).value = result.display;
   } else {
-    // 両エンジンで見つからない → Googleマップ誘導
     showGoogleMapsFallback(inputId, mapId, query);
   }
 }
 
 async function reverseGeocode(lat, lng) {
   try {
-    const res = await fetch(
-      `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&accept-language=ja`,
-      { headers: { 'Accept-Language': 'ja' } }
-    );
+    const res = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&accept-language=ja`, { headers: { 'Accept-Language': 'ja' } });
     const data = await res.json();
     return data.display_name || '';
   } catch { return ''; }
@@ -1098,9 +1009,7 @@ function placePin(lat, lng) {
   if (miniMarker) miniMarker.remove();
   const el = document.createElement('div');
   el.className = 'map-marker';
-  miniMarker = new maplibregl.Marker({ element: el, draggable: true })
-    .setLngLat([lng, lat])
-    .addTo(miniMap);
+  miniMarker = new maplibregl.Marker({ element: el, draggable: true }).setLngLat([lng, lat]).addTo(miniMap);
   miniMarker.on('dragend', async () => {
     const pos = miniMarker.getLngLat();
     selectedLat = pos.lat; selectedLng = pos.lng;
@@ -1109,27 +1018,18 @@ function placePin(lat, lng) {
     const addr = await reverseGeocode(pos.lat, pos.lng);
     if (addr) document.getElementById('input-address').value = addr;
   });
-  // Auto-fill address
-  reverseGeocode(lat, lng).then(addr => {
-    if (addr) document.getElementById('input-address').value = addr;
-  });
+  reverseGeocode(lat, lng).then(addr => { if (addr) document.getElementById('input-address').value = addr; });
 }
 
-// ── File handling ──
 const dropZone = document.getElementById('drop-zone');
 const fileInput = document.getElementById('file-input');
-
 dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
 dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
-dropZone.addEventListener('drop', e => {
-  e.preventDefault(); dropZone.classList.remove('drag-over');
-  if (e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]);
-});
+dropZone.addEventListener('drop', e => { e.preventDefault(); dropZone.classList.remove('drag-over'); if (e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]); });
 fileInput.addEventListener('change', () => { if (fileInput.files[0]) handleFile(fileInput.files[0]); });
 
 async function handleFile(file) {
   selectedFile = file;
-  // EXIFから撮影日を取得（取れなければファイル更新日にフォールバック）
   selectedDate = (await getExifDate(file)) || getDateStr(file);
   const reader = new FileReader();
   reader.onload = async e => {
@@ -1164,7 +1064,6 @@ function getDateStr(file) {
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 }
 
-// EXIFから撮影日を取得（JPEGバイナリを直接解析、外部ライブラリ不要）
 function getExifDate(file) {
   return new Promise(resolve => {
     const reader = new FileReader();
@@ -1172,12 +1071,12 @@ function getExifDate(file) {
       try {
         const buf = e.target.result;
         const view = new DataView(buf);
-        if (view.getUint16(0) !== 0xFFD8) return resolve(null); // JPEGチェック
+        if (view.getUint16(0) !== 0xFFD8) return resolve(null);
         let offset = 2;
         while (offset < buf.byteLength - 4) {
           const marker = view.getUint16(offset);
           const segLen = view.getUint16(offset + 2);
-          if (marker === 0xFFE1) { // APP1 (EXIF)
+          if (marker === 0xFFE1) {
             const exifHeader = String.fromCharCode(...new Uint8Array(buf, offset + 4, 4));
             if (exifHeader === 'Exif') {
               const tiffOffset = offset + 10;
@@ -1189,12 +1088,9 @@ function getExifDate(file) {
               for (let i = 0; i < entryCount; i++) {
                 const eo = ifdOffset + 2 + i * 12;
                 const tag = getU16(eo);
-                // 0x9003=DateTimeOriginal 0x9004=DateTimeDigitized 0x0132=DateTime
                 if (tag === 0x9003 || tag === 0x9004 || tag === 0x0132) {
                   const valOffset = getU32(eo + 8);
-                  const dateStr = String.fromCharCode(
-                    ...new Uint8Array(buf, tiffOffset + valOffset, 19)
-                  );
+                  const dateStr = String.fromCharCode(...new Uint8Array(buf, tiffOffset + valOffset, 19));
                   const m = dateStr.match(/(\d{4}):(\d{2}):(\d{2})/);
                   if (m) return resolve(`${m[1]}-${m[2]}-${m[3]}`);
                 }
@@ -1207,40 +1103,33 @@ function getExifDate(file) {
         resolve(null);
       } catch { resolve(null); }
     };
-    reader.readAsArrayBuffer(file.slice(0, 65536)); // 先頭64KBだけ読む
+    reader.readAsArrayBuffer(file.slice(0, 65536));
   });
 }
 
-// ── Save ──
 async function savePhoto() {
   if (!fullBase64) { showToast('⚠️ 写真を選択してください'); return; }
   if (!selectedLat) { showToast('⚠️ 地図をクリックして場所を指定してください'); return; }
   if (!document.getElementById('input-category').value) { showToast('⚠️ カテゴリーを選択してください'); return; }
-
   const btn = document.getElementById('btn-save');
   btn.disabled = true; btn.textContent = '保存中…';
-
   const photo = {
     id: 'p' + Date.now(),
-    full: fullBase64,
-    thumbnail: thumbBase64 || fullBase64,
+    full: fullBase64, thumbnail: thumbBase64 || fullBase64,
     date: selectedDate || getDateStr(selectedFile),
     address: document.getElementById('input-address').value.trim() || '住所未設定',
     category: document.getElementById('input-category').value,
     comment: document.getElementById('input-comment').value.trim(),
-    lat: selectedLat,
-    lng: selectedLng
+    lat: selectedLat, lng: selectedLng
   };
   try {
     await DB.add(photo);
     showToast('✅ 写真を保存しました');
-    closeUpload();
-    resetUploadForm();
+    closeUpload(); resetUploadForm();
     if (mainMap) refreshMapMarkers();
     updateHomeCount();
   } catch (e) {
     showToast('⚠️ 保存に失敗しました: ' + (e.message || e));
-    console.error(e);
   } finally {
     btn.disabled = false; btn.textContent = '💾 保存';
   }
@@ -1261,22 +1150,51 @@ function resetUploadForm() {
   if (miniMarker) { miniMarker.remove(); miniMarker = null; }
 }
 
-// ── Toast ──
+async function exportData() {
+  const photos = await DB.load();
+  if (!photos.length) { showToast('⚠️ 写真が登録されていません'); return; }
+  const blob = new Blob([JSON.stringify(photos)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const d = new Date();
+  const stamp = `${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}`;
+  a.href = url; a.download = `photomap_backup_${stamp}.json`; a.click();
+  URL.revokeObjectURL(url);
+  showToast(`✅ ${photos.length}枚のデータを書き出しました`);
+}
+
+async function importData(input) {
+  const file = input.files[0];
+  input.value = '';
+  if (!file) return;
+  const text = await file.text();
+  let photos;
+  try { photos = JSON.parse(text); } catch { showToast('⚠️ ファイルが正しくありません'); return; }
+  if (!Array.isArray(photos) || !photos.length) { showToast('⚠️ データが見つかりません'); return; }
+  if (!confirm(`${photos.length}枚のデータを読み込みます。既存データと統合されます。続けますか？`)) return;
+  let added = 0, skipped = 0;
+  const existing = await DB.load();
+  const existingIds = new Set(existing.map(p => p.id));
+  for (const p of photos) {
+    if (existingIds.has(p.id)) { skipped++; continue; }
+    await DB.add(p).catch(() => { skipped++; });
+    added++;
+  }
+  showToast(`✅ ${added}枚を追加しました${skipped ? `（${skipped}枚は重複スキップ）` : ''}`);
+  updateHomeCount();
+  if (mainMap) refreshMapMarkers();
+}
+
 function showToast(msg) {
   const t = document.getElementById('toast');
-  t.textContent = msg;
-  t.classList.add('show');
+  t.textContent = msg; t.classList.add('show');
   setTimeout(() => t.classList.remove('show'), 2800);
 }
 
-// ── Keyboard ──
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape') { closeLightbox(); closeUpload(); }
 });
 
-// ═══════════════════════════════════════════════════════════════
-// PASSWORD
-// ═══════════════════════════════════════════════════════════════
 const PASSWORD = 'PhotoMap2025';
 const SESSION_KEY = 'photomap_auth';
 
@@ -1294,9 +1212,8 @@ function checkPassword() {
   }
 }
 
-// ── Init ──
 (async () => {
-  await DB.migrate(); // 旧localStorageデータをIndexedDBへ移行
+  await DB.migrate();
   if (sessionStorage.getItem(SESSION_KEY) === '1') {
     document.getElementById('view-password').style.display = 'none';
     document.getElementById('view-home').classList.add('active');
