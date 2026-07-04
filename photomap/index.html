@@ -6,6 +6,9 @@
   <title>Photo Map</title>
   <link href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" rel="stylesheet">
   <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-storage-compat.js"></script>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f0f2f5; color: #1a1a2e; }
@@ -344,7 +347,7 @@
 </head>
 <body>
 
-<!-- ╔═ PASSWORD ═══════════════════════════════════════════════════════════════════╗ -->
+<!-- ╔═ PASSWORD ═══════════════════════════════════════════════════════════════╗ -->
 <div id="view-password">
   <div class="pw-logo">🗺️</div>
   <h1 class="pw-title">Photo Map</h1>
@@ -358,7 +361,7 @@
   </div>
 </div>
 
-<!-- ╔═ LANDING ══════════════════════════════════════════════════════════════════╗ -->
+<!-- ╔═ LANDING ══════════════════════════════════════════════════════════════╗ -->
 <div id="view-home" class="view active">
   <div class="home-logo">🗺️</div>
   <h1 class="home-title">Photo Map</h1>
@@ -381,25 +384,25 @@
   </div>
 </div>
 
-<!-- ╔═ MAP VIEW ══════════════════════════════════════════════════════════════════╗ -->
+<!-- ╔═ MAP VIEW ══════════════════════════════════════════════════════════════╗ -->
 <div id="view-map" class="view">
   <div class="map-header">
-    <button class="btn-back" onclick="showHome()">← ホーム</button>
+    <button class="btn-back" onclick="showHome()"><- ホーム</button>
     <h1>📍 Photo Map</h1>
     <span id="map-count" style="font-size:12px;color:rgba(255,255,255,0.5);"></span>
   </div>
   <div id="map"></div>
-  <button class="btn-add-float" onclick="openUpload()">＋ 写真を追加</button>
+  <button class="btn-add-float" onclick="openUpload()">+ 写真を追加</button>
 </div>
 
-<!-- ╔═ LIGHTBOX ══════════════════════════════════════════════════════════════════╗ -->
+<!-- ╔═ LIGHTBOX ══════════════════════════════════════════════════════════════╗ -->
 <div id="lightbox">
   <div class="lb-drop-hint">
     <span class="lb-drop-hint-icon">📸</span>
     <span class="lb-drop-hint-text">ここにドロップして同じ場所に追加</span>
   </div>
   <div id="lb-progress">追加中… 0/0</div>
-  <button class="lightbox-close" onclick="closeLightbox()">✕</button>
+  <button class="lightbox-close" onclick="closeLightbox()">&#x2715;</button>
   <img class="lightbox-img" id="lb-img" src="" alt="">
   <div class="lightbox-meta">
     <div class="lightbox-meta-row">
@@ -427,12 +430,12 @@
   </div>
 </div>
 
-<!-- ╔═ EDIT MODAL ════════════════════════════════════════════════════════════════╗ -->
+<!-- ╔═ EDIT MODAL ══════════════════════════════════════════════════════════════╗ -->
 <div id="modal-edit">
   <div class="edit-box">
     <div class="edit-header">
       <h2>✏️ 登録情報を編集</h2>
-      <button class="modal-close" onclick="closeEdit()">✕</button>
+      <button class="modal-close" onclick="closeEdit()">&#x2715;</button>
     </div>
     <div class="edit-body">
       <div class="form-group">
@@ -478,7 +481,7 @@
   <div class="modal-box">
     <div class="modal-header">
       <h2>📷 写真を追加</h2>
-      <button class="modal-close" onclick="closeUpload()">✕</button>
+      <button class="modal-close" onclick="closeUpload()">&#x2715;</button>
     </div>
     <div class="modal-body">
       <div class="panel-left">
@@ -530,13 +533,13 @@
   </div>
 </div>
 
-<!-- ╔═ GOOGLE MAPS FALLBACK MODAL ══════════════════════════════════════════════╗ -->
+<!-- ╔═ GOOGLE MAPS FALLBACK MODAL ════════════════════════════════════════════╗ -->
 <div id="modal-gmaps" style="display:none;position:fixed;inset:0;z-index:3000;background:rgba(0,0,0,0.65);align-items:center;justify-content:center;padding:16px;">
   <div style="background:#fff;border-radius:20px;width:100%;max-width:420px;box-shadow:0 24px 64px rgba(0,0,0,0.35);">
     <div style="padding:18px 20px 0;display:flex;align-items:center;gap:10px;">
       <span style="font-size:22px;">📍</span>
       <h2 style="font-size:15px;font-weight:700;flex:1;">住所が見つかりませんでした</h2>
-      <button onclick="closeGmaps()" style="background:#f1f5f9;border:none;cursor:pointer;border-radius:8px;width:32px;height:32px;font-size:18px;">✕</button>
+      <button onclick="closeGmaps()" style="background:#f1f5f9;border:none;cursor:pointer;border-radius:8px;width:32px;height:32px;font-size:18px;">&#x2715;</button>
     </div>
     <div style="padding:16px 20px;">
       <p style="font-size:13px;color:#555;line-height:1.7;margin-bottom:14px;">
@@ -563,71 +566,53 @@
   </div>
 </div>
 
-<!-- ╔═ TOAST ══════════════════════════════════════════════════════════════════════╗ -->
+<!-- ╔═ TOAST ══════════════════════════════════════════════════════════════════╗ -->
 <div id="toast"></div>
 
 <script>
+firebase.initializeApp({
+  apiKey: "AIzaSyCJP1SgRhpXVP8B0rnE7p6wNK-nkQZo-E0",
+  authDomain: "danamonphotomap-91248.firebaseapp.com",
+  projectId: "danamonphotomap-91248",
+  storageBucket: "danamonphotomap-91248.firebasestorage.app",
+  messagingSenderId: "622827302101",
+  appId: "1:622827302101:web:4d7ace2f49854552fbc65c"
+});
+const fstore = firebase.firestore();
+const fstorage = firebase.storage();
+
 const DB = {
-  _db: null,
-  open() {
-    return new Promise((resolve, reject) => {
-      if (this._db) return resolve(this._db);
-      const req = indexedDB.open('photomap_v2', 1);
-      req.onupgradeneeded = e => {
-        const db = e.target.result;
-        if (!db.objectStoreNames.contains('photos')) {
-          db.createObjectStore('photos', { keyPath: 'id' });
-        }
-      };
-      req.onsuccess = e => { this._db = e.target.result; resolve(this._db); };
-      req.onerror = () => reject(req.error);
-    });
-  },
+  _cache: null,
   async load() {
-    const db = await this.open();
-    return new Promise((resolve, reject) => {
-      const tx = db.transaction('photos', 'readonly');
-      const req = tx.objectStore('photos').getAll();
-      req.onsuccess = () => resolve(req.result || []);
-      req.onerror = () => reject(req.error);
-    });
+    if (this._cache) return this._cache;
+    const snap = await fstore.collection('photos').get();
+    this._cache = snap.docs.map(d => d.data());
+    return this._cache;
   },
   async add(photo) {
-    const db = await this.open();
-    return new Promise((resolve, reject) => {
-      const tx = db.transaction('photos', 'readwrite');
-      const req = tx.objectStore('photos').add(photo);
-      req.onsuccess = () => resolve(photo);
-      req.onerror = () => reject(req.error);
-    });
+    const { full, ...meta } = photo;
+    if (full) {
+      await fstorage.ref(`photos/${photo.id}`).putString(full, 'data_url');
+    }
+    await fstore.collection('photos').doc(photo.id).set(meta);
+    this._cache = null;
+    return photo;
   },
   async update(photo) {
-    const db = await this.open();
-    return new Promise((resolve, reject) => {
-      const tx = db.transaction('photos', 'readwrite');
-      const req = tx.objectStore('photos').put(photo);
-      req.onsuccess = () => resolve(photo);
-      req.onerror = () => reject(req.error);
-    });
+    const { full, ...meta } = photo;
+    await fstore.collection('photos').doc(photo.id).set(meta);
+    this._cache = null;
+    return photo;
   },
   async delete(id) {
-    const db = await this.open();
-    return new Promise((resolve, reject) => {
-      const tx = db.transaction('photos', 'readwrite');
-      const req = tx.objectStore('photos').delete(id);
-      req.onsuccess = () => resolve();
-      req.onerror = () => reject(req.error);
-    });
+    await fstore.collection('photos').doc(id).delete();
+    try { await fstorage.ref(`photos/${id}`).delete(); } catch(e) {}
+    this._cache = null;
   },
-  async migrate() {
-    const old = localStorage.getItem('photomap_v1');
-    if (!old) return;
-    try {
-      const photos = JSON.parse(old);
-      for (const p of photos) await this.add(p).catch(() => {});
-      localStorage.removeItem('photomap_v1');
-    } catch (e) { console.warn('移行エラー:', e); }
-  }
+  async getFullImageUrl(id) {
+    try { return await fstorage.ref(`photos/${id}`).getDownloadURL(); } catch(e) { return null; }
+  },
+  migrate() { return Promise.resolve(); }
 };
 
 const CAT_CLASS = {
@@ -751,12 +736,15 @@ async function openLightbox(id) {
   const photo = all.find(p => p.id === id);
   if (!photo) return;
   currentPhotoId = id;
-  document.getElementById('lb-img').src = photo.full;
+  document.getElementById('lb-img').src = photo.thumbnail || '';
   document.getElementById('lb-date').textContent = photo.date || '不明';
   document.getElementById('lb-address').textContent = photo.address || '未設定';
   document.getElementById('lb-category').innerHTML = badgeHTML(photo.category);
   document.getElementById('lb-comment').textContent = photo.comment || '—';
   document.getElementById('lightbox').classList.add('open');
+  DB.getFullImageUrl(id).then(url => {
+    if (url && currentPhotoId === id) document.getElementById('lb-img').src = url;
+  });
 }
 function closeLightbox() {
   document.getElementById('lightbox').classList.remove('open');
