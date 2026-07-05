@@ -251,13 +251,13 @@
 <div id="appContent" style="display:none; width:100%; display:none; flex-direction:column; align-items:center;">
 
 <h1>🎙️ バハサ→日本語 リアルタイム翻訳</h1>
-<p class="subtitle">インドネシア語音声を日本語テキストにリアルタイム変換 <small style="opacity:0.4">v23</small></p>
+<p class="subtitle">インドネシア語音声を日本語テキストにリアルタイム変換 <small style="opacity:0.4">v24</small></p>
 
 <div class="card">
   <label style="display:block; font-size:0.85rem; color:#aaa; margin-bottom:6px;">OpenAI API キー</label>
-  <input type="text" id="apiKey" placeholder="sk-..." autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" style="display:block; width:100%; background:#1a1a24; border:1px solid #2a2a3a; border-radius:8px; color:#e8e8f0; font-size:0.85rem; padding:10px 14px; margin-bottom:12px; outline:none; word-break:break-all;">
+  <input type="password" id="apiKey" placeholder="sk-..." autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" style="display:block; width:100%; background:#1a1a24; border:1px solid #2a2a3a; border-radius:8px; color:#e8e8f0; font-size:0.95rem; padding:10px 14px; margin-bottom:12px; outline:none;">
   <label style="display:block; font-size:0.85rem; color:#aaa; margin-bottom:6px; margin-top:4px;">プロキシURL（Cloudflare Worker）</label>
-  <input type="text" id="proxyUrl" placeholder="https://xxxx.workers.dev" autocomplete="off" style="display:block; width:100%; background:#1a1a24; border:1px solid #2a2a3a; border-radius:8px; color:#e8e8f0; font-size:0.95rem; padding:10px 14px; margin-bottom:12px; outline:none;">
+  <input type="text" id="proxyUrl" placeholder="https://xxxx.workers.dev" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" style="display:block; width:100%; background:#1a1a24; border:1px solid #2a2a3a; border-radius:8px; color:#e8e8f0; font-size:0.95rem; padding:10px 14px; margin-bottom:12px; outline:none;">
 
   <div id="visualizer">
     <div class="bar" id="b0"></div><div class="bar" id="b1"></div>
@@ -293,6 +293,20 @@
 </div>
 
 <script>
+// ─── Restore saved settings ──────────────────────────────────────────────────
+(function() {
+  const savedKey = localStorage.getItem('openai_api_key');
+  const savedProxy = localStorage.getItem('proxy_url');
+  if (savedKey) document.getElementById('apiKey').value = savedKey;
+  if (savedProxy) document.getElementById('proxyUrl').value = savedProxy;
+  document.getElementById('apiKey').addEventListener('change', () => {
+    localStorage.setItem('openai_api_key', document.getElementById('apiKey').value.trim());
+  });
+  document.getElementById('proxyUrl').addEventListener('change', () => {
+    localStorage.setItem('proxy_url', document.getElementById('proxyUrl').value.trim());
+  });
+})();
+
 // ─── State ───────────────────────────────────────────────────────────────────
 let mediaStream = null;
 let recognition = null;
