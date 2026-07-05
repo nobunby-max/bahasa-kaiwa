@@ -251,7 +251,7 @@
 <div id="appContent" style="display:none; width:100%; display:none; flex-direction:column; align-items:center;">
 
 <h1>🎙️ バハサ→日本語 リアルタイム翻訳</h1>
-<p class="subtitle">インドネシア語音声を日本語テキストにリアルタイム変換 <small style="opacity:0.4">v24</small></p>
+<p class="subtitle">インドネシア語音声を日本語テキストにリアルタイム変換 <small style="opacity:0.4">v25</small></p>
 
 <div class="card">
   <label style="display:block; font-size:0.85rem; color:#aaa; margin-bottom:6px;">OpenAI API キー</label>
@@ -289,6 +289,10 @@
   </div>
   <div id="output">
     <p class="placeholder">「開始」ボタンを押してインドネシア語を話してください</p>
+  </div>
+  <div style="display:flex; gap:8px; margin-top:10px;">
+    <button onclick="copyAll()" style="flex:1; background:#2a2a3a; color:#e8e8f0; border:1px solid #3a3a4a; border-radius:8px; padding:10px; font-size:0.9rem; cursor:pointer;">📋 全文コピー</button>
+    <button onclick="sendEmail()" style="flex:1; background:#2a2a3a; color:#e8e8f0; border:1px solid #3a3a4a; border-radius:8px; padding:10px; font-size:0.9rem; cursor:pointer;">✉️ メールで送る</button>
   </div>
 </div>
 
@@ -334,6 +338,38 @@ function showError(msg) {
   errorBox.textContent = msg;
   errorBox.style.display = 'block';
   setTimeout(() => { errorBox.style.display = 'none'; }, 6000);
+}
+
+function getTranslationText() {
+  const segments = output.querySelectorAll('.segment:not(.partial) .text');
+  if (segments.length === 0) return '';
+  return Array.from(segments).map(el => el.textContent.trim()).join('\n');
+}
+
+function copyAll() {
+  const text = getTranslationText();
+  if (!text) { showError('コピーする翻訳テキストがありません'); return; }
+  navigator.clipboard.writeText(text).then(() => {
+    showError('クリップボードにコピーしました ✓');
+  }).catch(() => {
+    // fallback for older iOS
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+    showError('クリップボードにコピーしました ✓');
+  });
+}
+
+function sendEmail() {
+  const text = getTranslationText();
+  if (!text) { showError('送信する翻訳テキストがありません'); return; }
+  const now = new Date().toLocaleString('ja-JP');
+  const subject = encodeURIComponent('バハサ→日本語 翻訳 ' + now);
+  const body = encodeURIComponent(text);
+  window.location.href = 'mailto:?subject=' + subject + '&body=' + body;
 }
 
 function clearOutput() {
