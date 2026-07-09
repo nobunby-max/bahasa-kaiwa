@@ -251,7 +251,7 @@
 <div id="appContent" style="display:none; width:100%; display:none; flex-direction:column; align-items:center;">
 
 <h1>🎙️ バハサ→日本語 リアルタイム翻訳</h1>
-<p class="subtitle">インドネシア語音声を日本語テキストにリアルタイム変換 <small style="opacity:0.4">v29</small></p>
+<p class="subtitle">インドネシア語音声を日本語テキストにリアルタイム変換 <small style="opacity:0.4">v30</small></p>
 
 <div class="card">
   <label style="display:block; font-size:0.85rem; color:#aaa; margin-bottom:6px;">OpenAI API キー</label>
@@ -280,6 +280,7 @@
   </div>
 
   <div id="errorBox" style="display:none" class="error-msg"></div>
+  <div id="listenBox" style="display:none; background:#1a2a1a; border:1px solid #2a4a2a; border-radius:8px; padding:8px 14px; font-size:0.85rem; color:#6fcc6f; margin-top:8px;">🎤 聞いています…</div>
 </div>
 
 <div class="output-card">
@@ -542,43 +543,56 @@ async function startSession() {
     stopSession(); return;
   }
 
-  recognition = new SpeechRecognition();
-  recognition.lang = 'id-ID';
-  recognition.continuous = true;
-  recognition.interimResults = true;
+  const listenBox = document.getElementById('listenBox');
 
-  recognition.onresult = (event) => {
-    for (let i = event.resultIndex; i < event.results.length; i++) {
-      if (event.results[i].isFinal) {
-        const text = event.results[i][0].transcript.trim();
-        if (!text) continue;
-        addPartialText('翻訳中: ' + text);
-        setTimeout(async () => {
-          try {
-            const japanese = await translateToJapanese(apiKey, text);
-            if (japanese) finalizeText(japanese);
-            else if (partialEl) { partialEl.remove(); partialEl = null; }
-          } catch(e) {
-            showError(e.message);
-            if (partialEl) { partialEl.remove(); partialEl = null; }
-          }
-        }, 0);
-      } else {
-        addPartialText(event.results[i][0].transcript);
+  function startRec() {
+    if (!isRecording) return;
+    const rec = new SpeechRecognition();
+    rec.lang = 'id-ID';
+    rec.continuous = false;
+    rec.interimResults = true;
+
+    rec.onstart = () => { listenBox.style.display = 'block'; };
+
+    rec.onresult = (event) => {
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        if (event.results[i].isFinal) {
+          const text = event.results[i][0].transcript.trim();
+          if (!text) continue;
+          addPartialText('翻訳中: ' + text);
+          setTimeout(async () => {
+            try {
+              const japanese = await translateToJapanese(apiKey, text);
+              if (japanese) finalizeText(japanese);
+              else if (partialEl) { partialEl.remove(); partialEl = null; }
+            } catch(e) {
+              showError(e.message);
+              if (partialEl) { partialEl.remove(); partialEl = null; }
+            }
+          }, 0);
+        } else {
+          addPartialText(event.results[i][0].transcript);
+        }
       }
+    };
+
+    rec.onerror = (e) => {
+      if (e.error === 'no-speech' || e.error === 'aborted' || e.error === 'network') return;
+      showError('音声認識エラー: ' + e.error);
+    };
+
+    rec.onend = () => {
+      listenBox.style.display = 'none';
+      if (isRecording) setTimeout(startRec, 300);
+    };
+
+    recognition = rec;
+    try { rec.start(); } catch(e) {
+      if (isRecording) setTimeout(startRec, 500);
     }
-  };
+  }
 
-  recognition.onerror = (e) => {
-    if (e.error === 'no-speech' || e.error === 'aborted' || e.error === 'network') return;
-    showError('音声認識エラー: ' + e.error);
-  };
-
-  recognition.onend = () => {
-    if (isRecording) recognition.start();
-  };
-
-  recognition.start();
+  startRec();
   startViz();
   isRecording = true;
   startBtn.disabled = false;
