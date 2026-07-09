@@ -251,7 +251,7 @@
 <div id="appContent" style="display:none; width:100%; display:none; flex-direction:column; align-items:center;">
 
 <h1>🎙️ バハサ→日本語 リアルタイム翻訳</h1>
-<p class="subtitle">インドネシア語音声を日本語テキストにリアルタイム変換 <small style="opacity:0.4">v25</small></p>
+<p class="subtitle">インドネシア語音声を日本語テキストにリアルタイム変換 <small style="opacity:0.4">v26</small></p>
 
 <div class="card">
   <label style="display:block; font-size:0.85rem; color:#aaa; margin-bottom:6px;">OpenAI API キー</label>
@@ -547,13 +547,24 @@ async function startSession() {
   recognition.continuous = true;
   recognition.interimResults = true;
 
+  let silenceTimer = null;
+  function resetSilenceTimer() {
+    if (silenceTimer) clearTimeout(silenceTimer);
+    silenceTimer = setTimeout(() => {
+      // No speech detected for 8 seconds — restart recognition
+      if (isRecording && recognition) {
+        try { recognition.stop(); } catch(_) {}
+      }
+    }, 8000);
+  }
+
   recognition.onresult = (event) => {
+    resetSilenceTimer();
     for (let i = event.resultIndex; i < event.results.length; i++) {
       if (event.results[i].isFinal) {
         const text = event.results[i][0].transcript.trim();
         if (!text) continue;
         addPartialText('翻訳中: ' + text);
-        // Defer fetch outside native callback to avoid iOS restrictions
         setTimeout(async () => {
           try {
             const japanese = await translateToJapanese(apiKey, text);
@@ -571,15 +582,28 @@ async function startSession() {
   };
 
   recognition.onerror = (e) => {
-    if (e.error === 'no-speech') return;
+    if (e.error === 'no-speech') {
+      resetSilenceTimer();
+      return;
+    }
+    if (e.error === 'network') {
+      showError('ネットワークエラー（音声認識）- 再試行中…');
+      return;
+    }
     showError('音声認識エラー: ' + e.error);
   };
 
   recognition.onend = () => {
-    if (isRecording) recognition.start();
+    if (silenceTimer) clearTimeout(silenceTimer);
+    if (isRecording) {
+      setTimeout(() => {
+        try { recognition.start(); resetSilenceTimer(); } catch(_) {}
+      }, 300);
+    }
   };
 
   recognition.start();
+  resetSilenceTimer();
   startViz();
   isRecording = true;
   startBtn.disabled = false;
