@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="ja">
+<html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -199,7 +199,7 @@
     #modal-edit.open { display: flex; }
     .edit-box {
       background: #fff; border-radius: 20px; width: 100%; max-width: 560px;
-      box-shadow: 0 24px 64px rgba(0,0,0,0.4);
+      box-shadow: 0 24px 64px rgba(0,0,0,0.4); max-height: 90vh; overflow-y: auto;
     }
     .edit-header {
       display: flex; align-items: center; padding: 16px 20px; border-bottom: 1px solid #f0f0f0;
@@ -351,13 +351,13 @@
 <div id="view-password">
   <div class="pw-logo">🗺️</div>
   <h1 class="pw-title">Photo Map</h1>
-  <p class="pw-sub">アクセスにはパスワードが必要です</p>
+  <p class="pw-sub">Password required for access</p>
   <div class="pw-box">
-    <label class="pw-label">🔑 パスワード</label>
-    <input class="pw-input" id="pw-input" type="password" placeholder="パスワードを入力"
+    <label class="pw-label">🔑 Password</label>
+    <input class="pw-input" id="pw-input" type="password" placeholder="Enter password"
       onkeydown="if(event.key==='Enter') checkPassword()">
-    <button class="pw-btn" onclick="checkPassword()">ログイン</button>
-    <p class="pw-error" id="pw-error">⚠️ パスワードが違います</p>
+    <button class="pw-btn" onclick="checkPassword()">Login</button>
+    <p class="pw-error" id="pw-error">⚠️ Incorrect password</p>
   </div>
 </div>
 
@@ -365,21 +365,21 @@
 <div id="view-home" class="view active">
   <div class="home-logo">🗺️</div>
   <h1 class="home-title">Photo Map</h1>
-  <p class="home-sub">撒影した写真を地図で管理・共有</p>
+  <p class="home-sub">Manage and share photos on a map</p>
   <div class="home-btns">
     <button class="btn-home btn-home-map" onclick="showMap()">
       <span class="icon">🗺️</span>
-      地図を見る
+      View Map
     </button>
     <button class="btn-home btn-home-upload" onclick="showMap(); openUpload()">
       <span class="icon">📷</span>
-      写真を追加
+      Add Photo
     </button>
   </div>
-  <p class="home-count" id="home-count">読み込み中…</p>
+  <p class="home-count" id="home-count">Loading…</p>
   <div class="home-transfer">
-    <button class="btn-transfer" onclick="exportData()">📤 データを書き出す</button>
-    <button class="btn-transfer" onclick="document.getElementById('import-input').click()">📥 データを読み込む</button>
+    <button class="btn-transfer" onclick="exportData()">📤 Export Data</button>
+    <button class="btn-transfer" onclick="document.getElementById('import-input').click()">📥 Import Data</button>
     <input type="file" id="import-input" accept=".json" style="display:none" onchange="importData(this)">
   </div>
 </div>
@@ -387,44 +387,60 @@
 <!-- ╔═ MAP VIEW ══════════════════════════════════════════════════════════════╗ -->
 <div id="view-map" class="view">
   <div class="map-header">
-    <button class="btn-back" onclick="showHome()"><- ホーム</button>
+    <button class="btn-back" onclick="showHome()"><- Home</button>
     <h1>📍 Photo Map</h1>
     <span id="map-count" style="font-size:12px;color:rgba(255,255,255,0.5);"></span>
   </div>
   <div id="map"></div>
-  <button class="btn-add-float" onclick="openUpload()">+ 写真を追加</button>
+  <button class="btn-add-float" onclick="openUpload()">+ Add Photo</button>
 </div>
 
 <!-- ╔═ LIGHTBOX ══════════════════════════════════════════════════════════════╗ -->
 <div id="lightbox">
   <div class="lb-drop-hint">
     <span class="lb-drop-hint-icon">📸</span>
-    <span class="lb-drop-hint-text">ここにドロップして同じ場所に追加</span>
+    <span class="lb-drop-hint-text">Drop here to add to same location</span>
   </div>
-  <div id="lb-progress">追加中… 0/0</div>
+  <div id="lb-progress">Adding… 0/0</div>
   <button class="lightbox-close" onclick="closeLightbox()">&#x2715;</button>
   <img class="lightbox-img" id="lb-img" src="" alt="">
   <div class="lightbox-meta">
     <div class="lightbox-meta-row">
-      <span class="meta-label">📅 日付</span>
+      <span class="meta-label">📅 Date</span>
       <span class="meta-value" id="lb-date">—</span>
     </div>
     <div class="lightbox-meta-row">
-      <span class="meta-label">📍 住所</span>
+      <span class="meta-label">📍 Address</span>
       <span class="meta-value" id="lb-address">—</span>
     </div>
     <div class="lightbox-meta-row">
-      <span class="meta-label">🏷️ 種別</span>
-      <span class="meta-value" id="lb-category">—</span>
+      <span class="meta-label">🏷️ Category 1</span>
+      <span class="meta-value" id="lb-category1">—</span>
+    </div>
+    <div class="lightbox-meta-row" id="lb-subcat1-row" style="display:none">
+      <span class="meta-label">　↳ Sub</span>
+      <span class="meta-value" id="lb-subcat1">—</span>
+    </div>
+    <div class="lightbox-meta-row" id="lb-category2-row" style="display:none">
+      <span class="meta-label">🏷️ Category 2</span>
+      <span class="meta-value" id="lb-category2">—</span>
+    </div>
+    <div class="lightbox-meta-row" id="lb-subcat2-row" style="display:none">
+      <span class="meta-label">　↳ Sub</span>
+      <span class="meta-value" id="lb-subcat2">—</span>
+    </div>
+    <div class="lightbox-meta-row" id="lb-region-row" style="display:none">
+      <span class="meta-label">📌 Region</span>
+      <span class="meta-value" id="lb-region">—</span>
     </div>
     <div class="lightbox-meta-row">
-      <span class="meta-label">💬 メモ</span>
+      <span class="meta-label">💬 Note</span>
       <span class="meta-value" id="lb-comment">—</span>
     </div>
     <div class="lightbox-actions">
-      <button class="btn-edit-lb btn-edit-lb-edit" onclick="openEdit()">✏️ 編集</button>
-      <button class="btn-edit-lb btn-edit-lb-add" onclick="document.getElementById('lb-file-input').click()">📷 写真を追加</button>
-      <button class="btn-edit-lb btn-edit-lb-delete" onclick="deletePhoto()">🗑️ 削除</button>
+      <button class="btn-edit-lb btn-edit-lb-edit" onclick="openEdit()">✏️ Edit</button>
+      <button class="btn-edit-lb btn-edit-lb-add" onclick="document.getElementById('lb-file-input').click()">📷 Add Photo</button>
+      <button class="btn-edit-lb btn-edit-lb-delete" onclick="deletePhoto()">🗑️ Delete</button>
     </div>
     <input type="file" id="lb-file-input" accept="image/*" multiple style="display:none">
   </div>
@@ -434,44 +450,85 @@
 <div id="modal-edit">
   <div class="edit-box">
     <div class="edit-header">
-      <h2>✏️ 登録情報を編集</h2>
+      <h2>✏️ Edit Info</h2>
       <button class="modal-close" onclick="closeEdit()">&#x2715;</button>
     </div>
     <div class="edit-body">
       <div class="form-group">
-        <label class="form-label">🗺️ 場所（地図をクリックして変更）</label>
+        <label class="form-label">🗺️ Location (click map to change)</label>
         <div id="edit-mini-map" style="height:220px;border-radius:12px;overflow:hidden;margin-bottom:6px;"></div>
         <div class="coords-display" id="edit-coords-display">
-          <span id="edit-coords-lat">緯度: —</span>
-          <span id="edit-coords-lng">経度: —</span>
+          <span id="edit-coords-lat">Lat: —</span>
+          <span id="edit-coords-lng">Lng: —</span>
         </div>
       </div>
       <div class="form-group">
-        <label class="form-label">📍 住所・場所</label>
+        <label class="form-label">📍 Address / Location</label>
         <div class="address-search">
-          <input class="form-input" id="edit-address" type="text" placeholder="住所を入力してEnterまたは🔍" onkeydown="if(event.key==='Enter') geocodeAddress('edit-address','edit-mini-map')">
+          <input class="form-input" id="edit-address" type="text" placeholder="Enter address and press Enter or 🔍" onkeydown="if(event.key==='Enter') geocodeAddress('edit-address','edit-mini-map')">
           <button class="btn-geocode" id="btn-geocode-edit" onclick="geocodeAddress('edit-address','edit-mini-map')">🔍</button>
         </div>
       </div>
       <div class="form-group">
-        <label class="form-label">🏷️ カテゴリー</label>
-        <select class="form-select" id="edit-category">
-          <option value="">選択してください</option>
-          <option value="お客様">お客様</option>
-          <option value="政府・当局関係者">政府・当局関係者</option>
-          <option value="内部">内部</option>
-          <option value="プライベート">プライベート</option>
-          <option value="その他">その他</option>
+        <label class="form-label">🏷️ Category 1</label>
+        <select class="form-select" id="edit-category1" onchange="updateSubcat('edit','1')">
+          <option value="">Select...</option>
+          <option value="Customer">Customer</option>
+          <option value="Government">Government / Authority</option>
+          <option value="Internal">Internal</option>
+          <option value="Private">Private</option>
+          <option value="Other">Other</option>
+        </select>
+      </div>
+      <div class="form-group" id="edit-subcat1-group" style="display:none">
+        <label class="form-label">　↳ Sub-category</label>
+        <select class="form-select" id="edit-subcat1">
+          <option value="">Select...</option>
         </select>
       </div>
       <div class="form-group">
-        <label class="form-label">💬 コメント</label>
+        <label class="form-label">🏷️ Category 2 <span style="font-weight:400;color:#999">(optional)</span></label>
+        <select class="form-select" id="edit-category2" onchange="updateSubcat('edit','2')">
+          <option value="">Select...</option>
+          <option value="Customer">Customer</option>
+          <option value="Government">Government / Authority</option>
+          <option value="Internal">Internal</option>
+          <option value="Private">Private</option>
+          <option value="Other">Other</option>
+        </select>
+      </div>
+      <div class="form-group" id="edit-subcat2-group" style="display:none">
+        <label class="form-label">　↳ Sub-category</label>
+        <select class="form-select" id="edit-subcat2">
+          <option value="">Select...</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">📌 Region <span style="font-weight:400;color:#999">(optional)</span></label>
+        <select class="form-select" id="edit-region">
+          <option value="">Select...</option>
+          <option value="BN1">BN1</option>
+          <option value="BN2">BN2</option>
+          <option value="BN3">BN3</option>
+          <option value="BN4">BN4</option>
+          <option value="BN5">BN5</option>
+          <option value="BN6">BN6</option>
+          <option value="BN7">BN7</option>
+          <option value="BN8">BN8</option>
+          <option value="BN9">BN9</option>
+          <option value="BN10">BN10</option>
+          <option value="BN11">BN11</option>
+          <option value="BN12">BN12</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">💬 Comment</label>
         <textarea class="form-textarea" id="edit-comment"></textarea>
       </div>
     </div>
     <div class="edit-footer">
-      <button class="btn-cancel" onclick="closeEdit()">キャンセル</button>
-      <button class="btn-save" onclick="saveEdit()">💾 保存</button>
+      <button class="btn-cancel" onclick="closeEdit()">Cancel</button>
+      <button class="btn-save" onclick="saveEdit()">💾 Save</button>
     </div>
   </div>
 </div>
@@ -480,7 +537,7 @@
 <div id="modal-upload">
   <div class="modal-box">
     <div class="modal-header">
-      <h2>📷 写真を追加</h2>
+      <h2>📷 Add Photo</h2>
       <button class="modal-close" onclick="closeUpload()">&#x2715;</button>
     </div>
     <div class="modal-body">
@@ -488,47 +545,88 @@
         <div class="drop-zone" id="drop-zone">
           <input type="file" id="file-input" accept="image/*">
           <span class="drop-icon">🖼️</span>
-          <p class="drop-text">クリックまたはドラッグ＆ドロップで写真を選択</p>
+          <p class="drop-text">Click or drag &amp; drop to select a photo</p>
           <img class="drop-preview" id="drop-preview" alt="preview">
         </div>
         <div class="form-area">
           <div class="form-group">
-            <label class="form-label">📍 住所・場所</label>
+            <label class="form-label">📍 Address / Location</label>
             <div class="address-search">
-              <input class="form-input" id="input-address" type="text" placeholder="住所を入力してEnterまたは🔍" onkeydown="if(event.key==='Enter') geocodeAddress('input-address','mini-map')">
+              <input class="form-input" id="input-address" type="text" placeholder="Enter address and press Enter or 🔍" onkeydown="if(event.key==='Enter') geocodeAddress('input-address','mini-map')">
               <button class="btn-geocode" id="btn-geocode-add" onclick="geocodeAddress('input-address','mini-map')">🔍</button>
             </div>
           </div>
           <div class="form-group">
-            <label class="form-label">🏷️ カテゴリー</label>
-            <select class="form-select" id="input-category">
-              <option value="">選択してください</option>
-              <option value="お客様">お客様</option>
-              <option value="政府・当局関係者">政府・当局関係者</option>
-              <option value="内部">内部</option>
-              <option value="プライベート">プライベート</option>
-              <option value="その他">その他</option>
+            <label class="form-label">🏷️ Category 1</label>
+            <select class="form-select" id="input-category1" onchange="updateSubcat('input','1')">
+              <option value="">Select...</option>
+              <option value="Customer">Customer</option>
+              <option value="Government">Government / Authority</option>
+              <option value="Internal">Internal</option>
+              <option value="Private">Private</option>
+              <option value="Other">Other</option>
+            </select>
+          </div>
+          <div class="form-group" id="input-subcat1-group" style="display:none">
+            <label class="form-label">　↳ Sub-category</label>
+            <select class="form-select" id="input-subcat1">
+              <option value="">Select...</option>
             </select>
           </div>
           <div class="form-group">
-            <label class="form-label">💬 コメント</label>
-            <textarea class="form-textarea" id="input-comment" placeholder="メモや説明を入力…"></textarea>
+            <label class="form-label">🏷️ Category 2 <span style="font-weight:400;color:#999">(optional)</span></label>
+            <select class="form-select" id="input-category2" onchange="updateSubcat('input','2')">
+              <option value="">Select...</option>
+              <option value="Customer">Customer</option>
+              <option value="Government">Government / Authority</option>
+              <option value="Internal">Internal</option>
+              <option value="Private">Private</option>
+              <option value="Other">Other</option>
+            </select>
+          </div>
+          <div class="form-group" id="input-subcat2-group" style="display:none">
+            <label class="form-label">　↳ Sub-category</label>
+            <select class="form-select" id="input-subcat2">
+              <option value="">Select...</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">📌 Region <span style="font-weight:400;color:#999">(optional)</span></label>
+            <select class="form-select" id="input-region">
+              <option value="">Select...</option>
+              <option value="BN1">BN1</option>
+              <option value="BN2">BN2</option>
+              <option value="BN3">BN3</option>
+              <option value="BN4">BN4</option>
+              <option value="BN5">BN5</option>
+              <option value="BN6">BN6</option>
+              <option value="BN7">BN7</option>
+              <option value="BN8">BN8</option>
+              <option value="BN9">BN9</option>
+              <option value="BN10">BN10</option>
+              <option value="BN11">BN11</option>
+              <option value="BN12">BN12</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">💬 Comment</label>
+            <textarea class="form-textarea" id="input-comment" placeholder="Enter notes or description…"></textarea>
           </div>
         </div>
       </div>
       <div class="panel-right">
-        <p class="panel-right-label">🗺️ 地図をクリックして場所を指定</p>
+        <p class="panel-right-label">🗺️ Click on the map to set location</p>
         <div id="mini-map"></div>
         <div class="coords-display">
-          <span id="coords-lat">緯度: —</span>
-          <span id="coords-lng">経度: —</span>
+          <span id="coords-lat">Lat: —</span>
+          <span id="coords-lng">Lng: —</span>
         </div>
-        <p class="coords-hint">📌 ピンをドラッグして位置を微調整できます</p>
+        <p class="coords-hint">📌 Drag pin to fine-tune location</p>
       </div>
     </div>
     <div class="modal-footer">
-      <button class="btn-cancel" onclick="closeUpload()">キャンセル</button>
-      <button class="btn-save" id="btn-save" onclick="savePhoto()">💾 保存</button>
+      <button class="btn-cancel" onclick="closeUpload()">Cancel</button>
+      <button class="btn-save" id="btn-save" onclick="savePhoto()">💾 Save</button>
     </div>
   </div>
 </div>
@@ -538,20 +636,20 @@
   <div style="background:#fff;border-radius:20px;width:100%;max-width:420px;box-shadow:0 24px 64px rgba(0,0,0,0.35);">
     <div style="padding:18px 20px 0;display:flex;align-items:center;gap:10px;">
       <span style="font-size:22px;">📍</span>
-      <h2 style="font-size:15px;font-weight:700;flex:1;">住所が見つかりませんでした</h2>
+      <h2 style="font-size:15px;font-weight:700;flex:1;">Address not found</h2>
       <button onclick="closeGmaps()" style="background:#f1f5f9;border:none;cursor:pointer;border-radius:8px;width:32px;height:32px;font-size:18px;">&#x2715;</button>
     </div>
     <div style="padding:16px 20px;">
       <p style="font-size:13px;color:#555;line-height:1.7;margin-bottom:14px;">
-        OSM・Photonでは <strong id="gmaps-query"></strong> が見つかりませんでした。<br>
-        Googleマップで場所を確認して座標を貼り付けてください。
+        Could not find <strong id="gmaps-query"></strong> via OSM / Photon.<br>
+        Please look up the location on Google Maps and paste the coordinates below.
       </p>
       <a id="gmaps-link" href="#" target="_blank" rel="noopener"
         style="display:block;text-align:center;background:#4285f4;color:#fff;padding:11px;border-radius:12px;font-size:13px;font-weight:700;text-decoration:none;margin-bottom:16px;">
-        🗺️ Googleマップで検索する（新しいタブ）
+        🗺️ Search on Google Maps (new tab)
       </a>
       <p style="font-size:12px;color:#6b7280;margin-bottom:8px;line-height:1.6;">
-        Googleマップで場所を確認したら、地図上を<strong>右クリック</strong>して表示される座標（例: <code>-6.2088, 106.8456</code>）をコピーして貼り付けてください。
+        Once you find the location on Google Maps, <strong>right-click</strong> on the map to copy the coordinates (e.g. <code>-6.2088, 106.8456</code>) and paste them below.
       </p>
       <div style="display:flex;gap:8px;">
         <input id="gmaps-coords-input" type="text" placeholder="-6.2088, 106.8456"
@@ -559,7 +657,7 @@
           onkeydown="if(event.key==='Enter') applyGmapsCoords()">
         <button onclick="applyGmapsCoords()"
           style="padding:10px 16px;background:#e94560;color:#fff;border:none;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;">
-          設定
+          Set
         </button>
       </div>
     </div>
@@ -615,16 +713,36 @@ const DB = {
   migrate() { return Promise.resolve(); }
 };
 
+const SUBCATS = {
+  Customer: ['EB','SME','Privilege','Optimal','Mass','Partner','MUFG (Oversea)'],
+  Internal: ['EB','SME','TB','Treasury','Syariah','Audit','Compliance','HR','Risk','IT&Digital','Finance','Strategy','GCO','BoC']
+};
+
+function updateSubcat(prefix, num) {
+  const cat = document.getElementById(`${prefix}-category${num}`).value;
+  const group = document.getElementById(`${prefix}-subcat${num}-group`);
+  const sel = document.getElementById(`${prefix}-subcat${num}`);
+  const subs = SUBCATS[cat];
+  if (subs) {
+    sel.innerHTML = '<option value="">Select...</option>' + subs.map(s => `<option value="${s}">${s}</option>`).join('');
+    group.style.display = '';
+  } else {
+    group.style.display = 'none';
+    sel.value = '';
+  }
+}
+
 const CAT_CLASS = {
-  'お客様': 'badge-customer',
-  '政府・当局関係者': 'badge-government',
-  '内部': 'badge-internal',
-  'プライベート': 'badge-private',
-  'その他': 'badge-other',
+  'Customer':    'badge-customer',
+  'Government':  'badge-government',
+  'Internal':    'badge-internal',
+  'Private':     'badge-private',
+  'Other':       'badge-other',
 };
 function badgeHTML(cat) {
+  if (!cat) return '';
   const cls = CAT_CLASS[cat] || 'badge-other';
-  return `<span class="badge ${cls}">${cat || 'その他'}</span>`;
+  return `<span class="badge ${cls}">${cat}</span>`;
 }
 
 function showHome() {
@@ -640,7 +758,10 @@ function showMap() {
 }
 async function updateHomeCount() {
   const photos = await DB.load();
-  document.getElementById('home-count').textContent = `現在 ${photos.length} 枚の写真が登録されています`;
+  const count = photos.length;
+  document.getElementById('home-count').textContent = count > 0
+    ? `${count} photos registered`
+    : 'No photos registered';
 }
 
 let mainMap = null;
@@ -668,7 +789,7 @@ async function refreshMapMarkers() {
   markers.length = 0;
   const all = await DB.load();
   const photos = all.filter(p => p.lat && p.lng);
-  document.getElementById('map-count').textContent = `${all.length} 枚`;
+  document.getElementById('map-count').textContent = `${all.length} photos`;
   if (!photos.length) return;
 
   const groups = {};
@@ -694,21 +815,21 @@ async function refreshMapMarkers() {
         <img class="popup-thumb" src="${p.thumbnail || p.full}" alt=""
           onclick="openLightbox('${p.id}')" style="cursor:pointer">
         <div class="popup-body">
-          <p class="popup-addr">${p.address || '住所未設定'}</p>
+          <p class="popup-addr">${p.address || 'Address not set'}</p>
           <div class="popup-meta">
-            <span class="popup-date">${p.date || '日付不明'}</span>
-            ${badgeHTML(p.category)}
+            <span class="popup-date">${p.date || 'Unknown date'}</span>
+            ${badgeHTML(p.category1 || p.category || '')}
           </div>
         </div>`;
     } else {
       const thumbs = group.map(p => `
         <div class="multi-thumb-item" onclick="openLightbox('${p.id}')">
           <img src="${p.thumbnail || p.full}" alt="">
-          <div class="multi-thumb-label">${badgeHTML(p.category)}</div>
+          <div class="multi-thumb-label">${badgeHTML(p.category1 || p.category || '')}</div>
         </div>`).join('');
       popupHTML = `
         <div class="popup-body" style="padding:10px 10px 6px;">
-          <p class="popup-addr" style="margin-bottom:8px;">${first.address || '住所未設定'} <strong>(${group.length}枚)</strong></p>
+          <p class="popup-addr" style="margin-bottom:8px;">${first.address || 'Address not set'} <strong>(${group.length} photos)</strong></p>
           <div class="multi-thumb-grid">${thumbs}</div>
         </div>`;
     }
@@ -737,9 +858,24 @@ async function openLightbox(id) {
   if (!photo) return;
   currentPhotoId = id;
   document.getElementById('lb-img').src = photo.thumbnail || '';
-  document.getElementById('lb-date').textContent = photo.date || '不明';
-  document.getElementById('lb-address').textContent = photo.address || '未設定';
-  document.getElementById('lb-category').innerHTML = badgeHTML(photo.category);
+  document.getElementById('lb-date').textContent = photo.date || 'Unknown date';
+  document.getElementById('lb-address').textContent = photo.address || 'Address not set';
+  // Category 1
+  document.getElementById('lb-category1').innerHTML = badgeHTML(photo.category1 || photo.category || '');
+  const sub1 = photo.subcat1 || '';
+  document.getElementById('lb-subcat1').textContent = sub1;
+  document.getElementById('lb-subcat1-row').style.display = sub1 ? '' : 'none';
+  // Category 2
+  const cat2 = photo.category2 || '';
+  document.getElementById('lb-category2').innerHTML = badgeHTML(cat2);
+  document.getElementById('lb-category2-row').style.display = cat2 ? '' : 'none';
+  const sub2 = photo.subcat2 || '';
+  document.getElementById('lb-subcat2').textContent = sub2;
+  document.getElementById('lb-subcat2-row').style.display = sub2 ? '' : 'none';
+  // Region
+  const region = photo.region || '';
+  document.getElementById('lb-region').textContent = region;
+  document.getElementById('lb-region-row').style.display = region ? '' : 'none';
   document.getElementById('lb-comment').textContent = photo.comment || '—';
   document.getElementById('lightbox').classList.add('open');
   DB.getFullImageUrl(id).then(url => {
@@ -767,17 +903,17 @@ document.getElementById('lb-file-input').addEventListener('change', async e => {
   const prog = document.getElementById('lb-progress');
   prog.style.display = 'block';
   let done = 0;
-  prog.textContent = `追加中… ${done}/${files.length}`;
+  prog.textContent = `Adding… ${done}/${files.length}`;
   for (const file of files) {
     const exifDate = (await getExifDate(file)) || getDateStr(file);
     const dataUrl = await new Promise(r => { const rd = new FileReader(); rd.onload = ev => r(ev.target.result); rd.readAsDataURL(file); });
     const full = await makeThumbnail(dataUrl, 1600, 0.85);
     const thumbnail = await makeThumbnail(dataUrl, 300, 0.82);
-    await DB.add({ id: 'p' + Date.now() + Math.random().toString(36).slice(2), full, thumbnail, date: exifDate, address: src.address, category: src.category, comment: src.comment, lat: src.lat, lng: src.lng });
+    await DB.add({ id: 'p' + Date.now() + Math.random().toString(36).slice(2), full, thumbnail, date: exifDate, address: src.address, category: src.category1 || src.category || '', category1: src.category1 || src.category || '', subcat1: src.subcat1||'', category2: src.category2||'', subcat2: src.subcat2||'', region: src.region||'', comment: src.comment, lat: src.lat, lng: src.lng });
     done++;
-    prog.textContent = `追加中… ${done}/${files.length}`;
+    prog.textContent = `Adding… ${done}/${files.length}`;
   }
-  prog.textContent = `✅ ${files.length}枚を追加しました`;
+  prog.textContent = `✅ ${files.length} photos added`;
   setTimeout(() => { prog.style.display = 'none'; }, 2000);
   if (mainMap) refreshMapMarkers();
   updateHomeCount();
@@ -794,7 +930,7 @@ lb.addEventListener('drop', async e => {
   if (!files.length) {
     const prog = document.getElementById('lb-progress');
     prog.style.display = 'block';
-    prog.textContent = '⚠️ Finderから写真をドラッグしてください（写真アプリ不可）';
+    prog.textContent = '⚠️ Please drag photos from Finder (Photos app not supported)';
     setTimeout(() => { prog.style.display = 'none'; }, 4000);
     return;
   }
@@ -804,17 +940,17 @@ lb.addEventListener('drop', async e => {
   const prog = document.getElementById('lb-progress');
   prog.style.display = 'block';
   let done = 0;
-  prog.textContent = `追加中… ${done}/${files.length}`;
+  prog.textContent = `Adding… ${done}/${files.length}`;
   for (const file of files) {
     const exifDate = (await getExifDate(file)) || getDateStr(file);
     const dataUrl = await new Promise(r => { const reader = new FileReader(); reader.onload = e2 => r(e2.target.result); reader.readAsDataURL(file); });
     const full = await makeThumbnail(dataUrl, 1600, 0.85);
     const thumbnail = await makeThumbnail(dataUrl, 300, 0.82);
-    await DB.add({ id: 'p' + Date.now() + Math.random().toString(36).slice(2), full, thumbnail, date: exifDate, address: src.address, category: src.category, comment: src.comment, lat: src.lat, lng: src.lng });
+    await DB.add({ id: 'p' + Date.now() + Math.random().toString(36).slice(2), full, thumbnail, date: exifDate, address: src.address, category: src.category1 || src.category || '', category1: src.category1 || src.category || '', subcat1: src.subcat1||'', category2: src.category2||'', subcat2: src.subcat2||'', region: src.region||'', comment: src.comment, lat: src.lat, lng: src.lng });
     done++;
-    prog.textContent = `追加中… ${done}/${files.length}`;
+    prog.textContent = `Adding… ${done}/${files.length}`;
   }
-  prog.textContent = `✅ ${files.length}枚を追加しました`;
+  prog.textContent = `✅ ${files.length} photos added`;
   setTimeout(() => { prog.style.display = 'none'; }, 2000);
   if (mainMap) refreshMapMarkers();
   updateHomeCount();
@@ -830,7 +966,13 @@ async function openEdit() {
   if (!photo) return;
   editLat = photo.lat; editLng = photo.lng;
   document.getElementById('edit-address').value = photo.address || '';
-  document.getElementById('edit-category').value = photo.category || '';
+  document.getElementById('edit-category1').value = photo.category1 || photo.category || '';
+  updateSubcat('edit','1');
+  document.getElementById('edit-subcat1').value = photo.subcat1 || '';
+  document.getElementById('edit-category2').value = photo.category2 || '';
+  updateSubcat('edit','2');
+  document.getElementById('edit-subcat2').value = photo.subcat2 || '';
+  document.getElementById('edit-region').value = photo.region || '';
   document.getElementById('edit-comment').value = photo.comment || '';
   document.getElementById('modal-edit').classList.add('open');
   setTimeout(() => {
@@ -857,8 +999,8 @@ async function openEdit() {
 
 function placEditPin(lat, lng, geocode = true) {
   editLat = lat; editLng = lng;
-  document.getElementById('edit-coords-lat').textContent = `緯度: ${lat.toFixed(6)}`;
-  document.getElementById('edit-coords-lng').textContent = `経度: ${lng.toFixed(6)}`;
+  document.getElementById('edit-coords-lat').textContent = `Lat: ${lat.toFixed(6)}`;
+  document.getElementById('edit-coords-lng').textContent = `Lng: ${lng.toFixed(6)}`;
   if (editMarker) editMarker.remove();
   const el = document.createElement('div');
   el.className = 'map-marker';
@@ -866,8 +1008,8 @@ function placEditPin(lat, lng, geocode = true) {
   editMarker.on('dragend', async () => {
     const pos = editMarker.getLngLat();
     editLat = pos.lat; editLng = pos.lng;
-    document.getElementById('edit-coords-lat').textContent = `緯度: ${pos.lat.toFixed(6)}`;
-    document.getElementById('edit-coords-lng').textContent = `経度: ${pos.lng.toFixed(6)}`;
+    document.getElementById('edit-coords-lat').textContent = `Lat: ${pos.lat.toFixed(6)}`;
+    document.getElementById('edit-coords-lng').textContent = `Lng: ${pos.lng.toFixed(6)}`;
     const addr = await reverseGeocode(pos.lat, pos.lng);
     if (addr) document.getElementById('edit-address').value = addr;
   });
@@ -880,24 +1022,29 @@ async function saveEdit() {
   const all = await DB.load();
   const photo = all.find(p => p.id === currentPhotoId);
   if (!photo) return;
-  photo.address  = document.getElementById('edit-address').value.trim() || '住所未設定';
-  photo.category = document.getElementById('edit-category').value;
-  photo.comment  = document.getElementById('edit-comment').value.trim();
+  photo.address   = document.getElementById('edit-address').value.trim() || 'Address not set';
+  photo.category1 = document.getElementById('edit-category1').value;
+  photo.subcat1   = document.getElementById('edit-subcat1').value;
+  photo.category2 = document.getElementById('edit-category2').value;
+  photo.subcat2   = document.getElementById('edit-subcat2').value;
+  photo.region    = document.getElementById('edit-region').value;
+  photo.category  = photo.category1; // backwards compat for badges
+  photo.comment   = document.getElementById('edit-comment').value.trim();
   if (editLat) { photo.lat = editLat; photo.lng = editLng; }
   await DB.update(photo);
   openLightbox(currentPhotoId);
   closeEdit();
   if (mainMap) refreshMapMarkers();
-  showToast('✅ 更新しました');
+  showToast('✅ Updated');
 }
 async function deletePhoto() {
   if (!currentPhotoId) return;
-  if (!confirm('この写真を削除しますか？')) return;
+  if (!confirm('Delete this photo?')) return;
   await DB.delete(currentPhotoId);
   closeLightbox();
   if (mainMap) refreshMapMarkers();
   updateHomeCount();
-  showToast('🗑️ 削除しました');
+  showToast('🗑️ Deleted');
 }
 
 let miniMap = null, miniMarker = null;
@@ -926,12 +1073,12 @@ function initMiniMap() {
 
 async function forwardGeocode(query) {
   try {
-    const res = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=1`, { headers: { 'Accept-Language': 'ja' } });
+    const res = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=1`, { headers: { 'Accept-Language': 'en' } });
     const data = await res.json();
     if (data && data[0]) return { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon), display: data[0].display_name };
   } catch {}
   try {
-    const res = await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(query)}&limit=1&lang=ja`);
+    const res = await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(query)}&limit=1&lang=en`);
     const data = await res.json();
     if (data.features && data.features[0]) {
       const [lng, lat] = data.features[0].geometry.coordinates;
@@ -947,7 +1094,7 @@ let _pendingGeoInputId = null, _pendingGeoMapId = null;
 function showGoogleMapsFallback(inputId, mapId, query) {
   _pendingGeoInputId = inputId; _pendingGeoMapId = mapId;
   document.getElementById('gmaps-link').href = `https://www.google.com/maps/search/${encodeURIComponent(query)}`;
-  document.getElementById('gmaps-query').textContent = `「${query}」`;
+  document.getElementById('gmaps-query').textContent = `"${query}"`;
   document.getElementById('gmaps-coords-input').value = '';
   document.getElementById('modal-gmaps').style.display = 'flex';
 }
@@ -956,13 +1103,13 @@ function closeGmaps() { document.getElementById('modal-gmaps').style.display = '
 function applyGmapsCoords() {
   const raw = document.getElementById('gmaps-coords-input').value.trim();
   const match = raw.match(/(-?\d+\.?\d*)[,\s]+(-?\d+\.?\d*)/);
-  if (!match) { showToast('⚠️ 形式: 緯度,経度 （例: -6.2088,106.8456）'); return; }
+  if (!match) { showToast('⚠️ Format: lat,lng (e.g. -6.2088,106.8456)'); return; }
   const lat = parseFloat(match[1]), lng = parseFloat(match[2]);
-  if (lat < -90 || lat > 90 || lng < -180 || lng > 180) { showToast('⚠️ 座標の値が不正です'); return; }
+  if (lat < -90 || lat > 90 || lng < -180 || lng > 180) { showToast('⚠️ Invalid coordinate values'); return; }
   if (_pendingGeoMapId === 'mini-map' && miniMap) { miniMap.flyTo({ center: [lng, lat], zoom: 15 }); placePin(lat, lng, true); }
   else if (_pendingGeoMapId === 'edit-mini-map' && editMap) { editMap.flyTo({ center: [lng, lat], zoom: 15 }); placEditPin(lat, lng, true); }
   closeGmaps();
-  showToast('✅ 座標を設定しました');
+  showToast('✅ Coordinates set');
 }
 
 async function geocodeAddress(inputId, mapId) {
@@ -984,7 +1131,7 @@ async function geocodeAddress(inputId, mapId) {
 
 async function reverseGeocode(lat, lng) {
   try {
-    const res = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&accept-language=ja`, { headers: { 'Accept-Language': 'ja' } });
+    const res = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&accept-language=en`, { headers: { 'Accept-Language': 'en' } });
     const data = await res.json();
     return data.display_name || '';
   } catch { return ''; }
@@ -992,8 +1139,8 @@ async function reverseGeocode(lat, lng) {
 
 function placePin(lat, lng) {
   selectedLat = lat; selectedLng = lng;
-  document.getElementById('coords-lat').textContent = `緯度: ${lat.toFixed(6)}`;
-  document.getElementById('coords-lng').textContent = `経度: ${lng.toFixed(6)}`;
+  document.getElementById('coords-lat').textContent = `Lat: ${lat.toFixed(6)}`;
+  document.getElementById('coords-lng').textContent = `Lng: ${lng.toFixed(6)}`;
   if (miniMarker) miniMarker.remove();
   const el = document.createElement('div');
   el.className = 'map-marker';
@@ -1001,8 +1148,8 @@ function placePin(lat, lng) {
   miniMarker.on('dragend', async () => {
     const pos = miniMarker.getLngLat();
     selectedLat = pos.lat; selectedLng = pos.lng;
-    document.getElementById('coords-lat').textContent = `緯度: ${pos.lat.toFixed(6)}`;
-    document.getElementById('coords-lng').textContent = `経度: ${pos.lng.toFixed(6)}`;
+    document.getElementById('coords-lat').textContent = `Lat: ${pos.lat.toFixed(6)}`;
+    document.getElementById('coords-lng').textContent = `Lng: ${pos.lng.toFixed(6)}`;
     const addr = await reverseGeocode(pos.lat, pos.lng);
     if (addr) document.getElementById('input-address').value = addr;
   });
@@ -1096,30 +1243,35 @@ function getExifDate(file) {
 }
 
 async function savePhoto() {
-  if (!fullBase64) { showToast('⚠️ 写真を選択してください'); return; }
-  if (!selectedLat) { showToast('⚠️ 地図をクリックして場所を指定してください'); return; }
-  if (!document.getElementById('input-category').value) { showToast('⚠️ カテゴリーを選択してください'); return; }
+  if (!fullBase64) { showToast('⚠️ Please select a photo'); return; }
+  if (!selectedLat) { showToast('⚠️ Please click on the map to set location'); return; }
+  if (!document.getElementById('input-category1').value) { showToast('⚠️ Please select Category 1'); return; }
   const btn = document.getElementById('btn-save');
-  btn.disabled = true; btn.textContent = '保存中…';
+  btn.disabled = true; btn.textContent = 'Saving…';
   const photo = {
     id: 'p' + Date.now(),
     full: fullBase64, thumbnail: thumbBase64 || fullBase64,
     date: selectedDate || getDateStr(selectedFile),
-    address: document.getElementById('input-address').value.trim() || '住所未設定',
-    category: document.getElementById('input-category').value,
+    address: document.getElementById('input-address').value.trim() || 'Address not set',
+    category1: document.getElementById('input-category1').value,
+    subcat1:   document.getElementById('input-subcat1').value,
+    category2: document.getElementById('input-category2').value,
+    subcat2:   document.getElementById('input-subcat2').value,
+    region:    document.getElementById('input-region').value,
+    category:  document.getElementById('input-category1').value,
     comment: document.getElementById('input-comment').value.trim(),
     lat: selectedLat, lng: selectedLng
   };
   try {
     await DB.add(photo);
-    showToast('✅ 写真を保存しました');
+    showToast('✅ Photo saved');
     closeUpload(); resetUploadForm();
     if (mainMap) refreshMapMarkers();
     updateHomeCount();
   } catch (e) {
-    showToast('⚠️ 保存に失敗しました: ' + (e.message || e));
+    showToast('⚠️ Save failed: ' + (e.message || e));
   } finally {
-    btn.disabled = false; btn.textContent = '💾 保存';
+    btn.disabled = false; btn.textContent = '💾 Save';
   }
 }
 
@@ -1130,17 +1282,23 @@ function resetUploadForm() {
   document.querySelector('.drop-icon').style.display = '';
   document.querySelector('.drop-text').style.display = '';
   document.getElementById('input-address').value = '';
-  document.getElementById('input-category').value = '';
+  document.getElementById('input-category1').value = '';
+  document.getElementById('input-subcat1').value = '';
+  document.getElementById('input-subcat1-group').style.display = 'none';
+  document.getElementById('input-category2').value = '';
+  document.getElementById('input-subcat2').value = '';
+  document.getElementById('input-subcat2-group').style.display = 'none';
+  document.getElementById('input-region').value = '';
   document.getElementById('input-comment').value = '';
-  document.getElementById('coords-lat').textContent = '緯度: —';
-  document.getElementById('coords-lng').textContent = '経度: —';
+  document.getElementById('coords-lat').textContent = 'Lat: —';
+  document.getElementById('coords-lng').textContent = 'Lng: —';
   document.getElementById('file-input').value = '';
   if (miniMarker) { miniMarker.remove(); miniMarker = null; }
 }
 
 async function exportData() {
   const photos = await DB.load();
-  if (!photos.length) { showToast('⚠️ 写真が登録されていません'); return; }
+  if (!photos.length) { showToast('⚠️ No photos registered'); return; }
   const blob = new Blob([JSON.stringify(photos)], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
@@ -1148,7 +1306,7 @@ async function exportData() {
   const stamp = `${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}`;
   a.href = url; a.download = `photomap_backup_${stamp}.json`; a.click();
   URL.revokeObjectURL(url);
-  showToast(`✅ ${photos.length}枚のデータを書き出しました`);
+  showToast(`✅ ${photos.length} photos exported`);
 }
 
 async function importData(input) {
@@ -1157,9 +1315,9 @@ async function importData(input) {
   if (!file) return;
   const text = await file.text();
   let photos;
-  try { photos = JSON.parse(text); } catch { showToast('⚠️ ファイルが正しくありません'); return; }
-  if (!Array.isArray(photos) || !photos.length) { showToast('⚠️ データが見つかりません'); return; }
-  if (!confirm(`${photos.length}枚のデータを読み込みます。既存データと統合されます。続けますか？`)) return;
+  try { photos = JSON.parse(text); } catch { showToast('⚠️ File is invalid'); return; }
+  if (!Array.isArray(photos) || !photos.length) { showToast('⚠️ No data found'); return; }
+  if (!confirm(`${photos.length} photos will be imported and merged with existing data. Continue?`)) return;
   let added = 0, skipped = 0;
   const existing = await DB.load();
   const existingIds = new Set(existing.map(p => p.id));
@@ -1168,7 +1326,7 @@ async function importData(input) {
     await DB.add(p).catch(() => { skipped++; });
     added++;
   }
-  showToast(`✅ ${added}枚を追加しました${skipped ? `（${skipped}枚は重複スキップ）` : ''}`);
+  showToast(`✅ ${added} photos added${skipped ? ` (${skipped} duplicates skipped)` : ''}`);
   updateHomeCount();
   if (mainMap) refreshMapMarkers();
 }
