@@ -338,8 +338,10 @@
     .btn-geocode:disabled { background: #d1d5db; border-color: #d1d5db; cursor: not-allowed; }
 
     @media (max-width: 600px) {
-      .modal-body { flex-direction: column; }
-      .panel-left { width: 100%; border-right: none; border-bottom: 1px solid #f0f0f0; max-height: 50vh; }
+      .modal-box { overflow-y: auto; }
+      .modal-body { flex-direction: column; overflow: visible; }
+      .panel-left { width: 100%; border-right: none; border-bottom: 1px solid #f0f0f0; max-height: none; overflow-y: visible; }
+      #mini-map { min-height: 180px; }
       .home-btns { flex-direction: column; align-items: center; }
       .btn-home { width: 80vw; max-width: 300px; flex-direction: row; justify-content: center; padding: 18px 24px; }
     }
@@ -1258,7 +1260,7 @@ async function savePhoto() {
     category2: document.getElementById('input-category2').value,
     subcat2:   document.getElementById('input-subcat2').value,
     region:    document.getElementById('input-region').value,
-    category:  document.getElementById('input-category1').value,
+    category:  document.getElementById('input-category1').value, // backwards compat
     comment: document.getElementById('input-comment').value.trim(),
     lat: selectedLat, lng: selectedLng
   };
