@@ -465,6 +465,10 @@
         </div>
       </div>
       <div class="form-group">
+        <label class="form-label">📅 Date</label>
+        <input class="form-input" id="edit-date" type="date">
+      </div>
+      <div class="form-group">
         <label class="form-label">📍 Address / Location</label>
         <div class="address-search">
           <input class="form-input" id="edit-address" type="text" placeholder="Enter address and press Enter or 🔍" onkeydown="if(event.key==='Enter') geocodeAddress('edit-address','edit-mini-map')">
@@ -551,6 +555,10 @@
           <img class="drop-preview" id="drop-preview" alt="preview">
         </div>
         <div class="form-area">
+          <div class="form-group">
+            <label class="form-label">📅 Date</label>
+            <input class="form-input" id="input-date" type="date">
+          </div>
           <div class="form-group">
             <label class="form-label">📍 Address / Location</label>
             <div class="address-search">
@@ -967,6 +975,7 @@ async function openEdit() {
   const photo = all.find(p => p.id === currentPhotoId);
   if (!photo) return;
   editLat = photo.lat; editLng = photo.lng;
+  document.getElementById('edit-date').value = photo.date || '';
   document.getElementById('edit-address').value = photo.address || '';
   document.getElementById('edit-category1').value = photo.category1 || photo.category || '';
   updateSubcat('edit','1');
@@ -1024,6 +1033,7 @@ async function saveEdit() {
   const all = await DB.load();
   const photo = all.find(p => p.id === currentPhotoId);
   if (!photo) return;
+  photo.date      = document.getElementById('edit-date').value || photo.date;
   photo.address   = document.getElementById('edit-address').value.trim() || 'Address not set';
   photo.category1 = document.getElementById('edit-category1').value;
   photo.subcat1   = document.getElementById('edit-subcat1').value;
@@ -1168,6 +1178,7 @@ fileInput.addEventListener('change', () => { if (fileInput.files[0]) handleFile(
 async function handleFile(file) {
   selectedFile = file;
   selectedDate = (await getExifDate(file)) || getDateStr(file);
+  document.getElementById('input-date').value = selectedDate;
   const reader = new FileReader();
   reader.onload = async e => {
     const preview = document.getElementById('drop-preview');
@@ -1253,7 +1264,7 @@ async function savePhoto() {
   const photo = {
     id: 'p' + Date.now(),
     full: fullBase64, thumbnail: thumbBase64 || fullBase64,
-    date: selectedDate || getDateStr(selectedFile),
+    date: document.getElementById('input-date').value || selectedDate || getDateStr(selectedFile),
     address: document.getElementById('input-address').value.trim() || 'Address not set',
     category1: document.getElementById('input-category1').value,
     subcat1:   document.getElementById('input-subcat1').value,
@@ -1279,6 +1290,7 @@ async function savePhoto() {
 
 function resetUploadForm() {
   selectedFile = null; fullBase64 = null; thumbBase64 = null; selectedDate = null;
+  document.getElementById('input-date').value = '';
   selectedLat = null; selectedLng = null;
   document.getElementById('drop-preview').style.display = 'none';
   document.querySelector('.drop-icon').style.display = '';
