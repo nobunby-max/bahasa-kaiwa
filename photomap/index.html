@@ -349,7 +349,7 @@
 </head>
 <body>
 
-<!-- ╔═ PASSWORD ═══════════════════════════════════════════════════════════════╗ -->
+<!-- ╔═ PASSWORD ══════════════════════════════════════════════════════════════╗ -->
 <div id="view-password">
   <div class="pw-logo">🗺️</div>
   <h1 class="pw-title">Photo Map</h1>
@@ -970,7 +970,7 @@ let editMap = null, editMarker = null;
 let editLat = null, editLng = null;
 
 async function openEdit() {
-  if (!currentPhotoId) return;
+  if (!isAdmin() || !currentPhotoId) return;
   const all = await DB.load();
   const photo = all.find(p => p.id === currentPhotoId);
   if (!photo) return;
@@ -1050,7 +1050,7 @@ async function saveEdit() {
   showToast('✅ Updated');
 }
 async function deletePhoto() {
-  if (!currentPhotoId) return;
+  if (!isAdmin() || !currentPhotoId) return;
   if (!confirm('Delete this photo?')) return;
   await DB.delete(currentPhotoId);
   closeLightbox();
@@ -1064,6 +1064,7 @@ let selectedLat = null, selectedLng = null;
 let selectedFile = null, fullBase64 = null, thumbBase64 = null, selectedDate = null;
 
 function openUpload() {
+  if (!isAdmin()) return;
   document.getElementById('modal-upload').classList.add('open');
   setTimeout(() => { if (!miniMap) initMiniMap(); else miniMap.resize(); }, 100);
 }
@@ -1355,26 +1356,50 @@ document.addEventListener('keydown', e => {
   if (e.key === 'Escape') { closeLightbox(); closeUpload(); }
 });
 
-const PASSWORD = 'PhotoMap2025';
-const SESSION_KEY = 'photomap_auth';
+const PASSWORD_ADMIN  = 'PhotoMapDD#';
+const PASSWORD_VIEWER = 'PhotoMap#';
+const SESSION_KEY = 'photomap_role'; // 'admin' | 'viewer'
+
+function isAdmin() { return sessionStorage.getItem(SESSION_KEY) === 'admin'; }
+
+function applyRole() {
+  const admin = isAdmin();
+  // Home screen: hide "Add Photo" button for viewers
+  document.querySelectorAll('.btn-home-upload').forEach(el => el.style.display = admin ? '' : 'none');
+  // Map: hide floating add button
+  const fab = document.querySelector('.btn-add-float');
+  if (fab) fab.style.display = admin ? '' : 'none';
+  // Lightbox: hide edit/delete/add-photo buttons
+  document.querySelectorAll('.btn-edit-lb-edit, .btn-edit-lb-add, .btn-edit-lb-delete').forEach(el => el.style.display = admin ? '' : 'none');
+  // Home transfer buttons (export/import) — keep visible for all; admin-only import
+  document.querySelectorAll('.home-transfer .btn-transfer').forEach((el, i) => {
+    if (i === 1) el.style.display = admin ? '' : 'none'; // import button
+  });
+}
 
 function checkPassword() {
   const val = document.getElementById('pw-input').value;
-  if (val === PASSWORD) {
-    sessionStorage.setItem(SESSION_KEY, '1');
-    document.getElementById('view-password').style.display = 'none';
-    document.getElementById('view-home').classList.add('active');
-    updateHomeCount();
+  if (val === PASSWORD_ADMIN) {
+    sessionStorage.setItem(SESSION_KEY, 'admin');
+  } else if (val === PASSWORD_VIEWER) {
+    sessionStorage.setItem(SESSION_KEY, 'viewer');
   } else {
     document.getElementById('pw-error').classList.add('show');
     document.getElementById('pw-input').value = '';
     document.getElementById('pw-input').focus();
+    return;
   }
+  applyRole();
+  document.getElementById('view-password').style.display = 'none';
+  document.getElementById('view-home').classList.add('active');
+  updateHomeCount();
 }
 
 (async () => {
   await DB.migrate();
-  if (sessionStorage.getItem(SESSION_KEY) === '1') {
+  const role = sessionStorage.getItem(SESSION_KEY);
+  if (role === 'admin' || role === 'viewer') {
+    applyRole();
     document.getElementById('view-password').style.display = 'none';
     document.getElementById('view-home').classList.add('active');
     updateHomeCount();
