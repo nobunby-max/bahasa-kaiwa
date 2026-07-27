@@ -329,6 +329,26 @@
 
     .address-search { display: flex; gap: 6px; }
     .address-search .form-input { flex: 1; }
+    .addr-wrap { position: relative; flex: 1; }
+    .addr-suggestions {
+      position: absolute; top: 100%; left: 0; right: 0; z-index: 500;
+      background: #fff; border: 1.5px solid #e5e7eb; border-radius: 10px;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.14); max-height: 220px; overflow-y: auto;
+      display: none; margin-top: 2px;
+    }
+    .addr-suggestions.show { display: block; }
+    .addr-suggestion-item {
+      padding: 10px 12px; font-size: 12px; cursor: pointer;
+      border-bottom: 1px solid #f3f4f6; line-height: 1.4; color: #374151;
+    }
+    .addr-suggestion-item:last-child { border-bottom: none; }
+    .addr-suggestion-item:hover { background: #fef2f4; }
+    .btn-gps {
+      width: 100%; padding: 9px; border-radius: 10px; border: 1.5px solid #3b82f6;
+      background: #eff6ff; color: #1d4ed8; cursor: pointer; font-size: 13px; font-weight: 600;
+      margin-bottom: 8px; transition: background .15s; text-align: center;
+    }
+    .btn-gps:hover { background: #dbeafe; }
     .btn-geocode {
       padding: 9px 14px; border-radius: 10px; border: 1.5px solid #e94560;
       background: #e94560; color: #fff; cursor: pointer; font-size: 13px; font-weight: 700;
@@ -458,6 +478,7 @@
     <div class="edit-body">
       <div class="form-group">
         <label class="form-label">🗺️ Location (click map to change)</label>
+        <button class="btn-gps" onclick="useCurrentLocation('edit-mini-map')">📍 Use Current Location (GPS)</button>
         <div id="edit-mini-map" style="height:220px;border-radius:12px;overflow:hidden;margin-bottom:6px;"></div>
         <div class="coords-display" id="edit-coords-display">
           <span id="edit-coords-lat">Lat: —</span>
@@ -471,7 +492,10 @@
       <div class="form-group">
         <label class="form-label">📍 Address / Location</label>
         <div class="address-search">
-          <input class="form-input" id="edit-address" type="text" placeholder="Enter address and press Enter or 🔍" onkeydown="if(event.key==='Enter') geocodeAddress('edit-address','edit-mini-map')">
+          <div class="addr-wrap">
+            <input class="form-input" id="edit-address" type="text" placeholder="Type to search address…" autocomplete="off" oninput="onAddressInput(this,'edit-mini-map')" onkeydown="if(event.key==='Enter'){event.preventDefault();geocodeAddress('edit-address','edit-mini-map')}">
+            <div class="addr-suggestions" id="edit-address-suggestions"></div>
+          </div>
           <button class="btn-geocode" id="btn-geocode-edit" onclick="geocodeAddress('edit-address','edit-mini-map')">🔍</button>
         </div>
       </div>
@@ -562,7 +586,10 @@
           <div class="form-group">
             <label class="form-label">📍 Address / Location</label>
             <div class="address-search">
-              <input class="form-input" id="input-address" type="text" placeholder="Enter address and press Enter or 🔍" onkeydown="if(event.key==='Enter') geocodeAddress('input-address','mini-map')">
+              <div class="addr-wrap">
+                <input class="form-input" id="input-address" type="text" placeholder="Type to search address…" autocomplete="off" oninput="onAddressInput(this,'mini-map')" onkeydown="if(event.key==='Enter'){event.preventDefault();geocodeAddress('input-address','mini-map')}">
+                <div class="addr-suggestions" id="input-address-suggestions"></div>
+              </div>
               <button class="btn-geocode" id="btn-geocode-add" onclick="geocodeAddress('input-address','mini-map')">🔍</button>
             </div>
           </div>
@@ -625,6 +652,7 @@
         </div>
       </div>
       <div class="panel-right">
+        <button class="btn-gps" onclick="useCurrentLocation('mini-map')">📍 Use Current Location (GPS)</button>
         <p class="panel-right-label">🗺️ Click on the map to set location</p>
         <div id="mini-map"></div>
         <div class="coords-display">
@@ -1124,6 +1152,62 @@ function applyGmapsCoords() {
   closeGmaps();
   showToast('✅ Coordinates set');
 }
+
+// ── GPS current location ──────────────────────────────────────────────────
+function useCurrentLocation(mapId) {
+  if (!navigator.geolocation) { showToast('⚠️ Geolocation not supported'); return; }
+  showToast('📍 Getting current location…');
+  navigator.geolocation.getCurrentPosition(async pos => {
+    const lat = pos.coords.latitude, lng = pos.coords.longitude;
+    if (mapId === 'mini-map' && miniMap) { miniMap.flyTo({ center: [lng, lat], zoom: 15 }); placePin(lat, lng, false); }
+    else if (mapId === 'edit-mini-map' && editMap) { editMap.flyTo({ center: [lng, lat], zoom: 15 }); placEditPin(lat, lng, false); }
+    const inputId = mapId === 'mini-map' ? 'input-address' : 'edit-address';
+    const addr = await reverseGeocode(lat, lng);
+    if (addr) document.getElementById(inputId).value = addr;
+    showToast('✅ Location set');
+  }, err => {
+    showToast('⚠️ Location error: ' + (err.code === 1 ? 'Permission denied' : err.message));
+  }, { enableHighAccuracy: true, timeout: 10000 });
+}
+
+// ── Address autocomplete ──────────────────────────────────────────────────
+let _addrDebounce = null;
+function onAddressInput(el, mapId) {
+  clearTimeout(_addrDebounce);
+  const q = el.value.trim();
+  const sugEl = document.getElementById(el.id + '-suggestions');
+  if (q.length < 3) { sugEl.classList.remove('show'); return; }
+  _addrDebounce = setTimeout(() => fetchAddressSuggestions(el.id, mapId, q), 400);
+}
+
+async function fetchAddressSuggestions(inputId, mapId, query) {
+  const sugEl = document.getElementById(inputId + '-suggestions');
+  try {
+    const res = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=5&addressdetails=1`, { headers: { 'Accept-Language': 'en' } });
+    const data = await res.json();
+    if (!data || !data.length) { sugEl.classList.remove('show'); return; }
+    sugEl.innerHTML = data.map(item =>
+      `<div class="addr-suggestion-item" data-lat="${item.lat}" data-lng="${item.lon}" data-display="${encodeURIComponent(item.display_name)}">${item.display_name}</div>`
+    ).join('');
+    sugEl.querySelectorAll('.addr-suggestion-item').forEach(el => {
+      el.addEventListener('click', () => {
+        const lat = parseFloat(el.dataset.lat), lng = parseFloat(el.dataset.lng);
+        const display = decodeURIComponent(el.dataset.display);
+        document.getElementById(inputId).value = display;
+        sugEl.classList.remove('show');
+        if (mapId === 'mini-map' && miniMap) { miniMap.flyTo({ center: [lng, lat], zoom: 14 }); placePin(lat, lng, false); }
+        else if (mapId === 'edit-mini-map' && editMap) { editMap.flyTo({ center: [lng, lat], zoom: 14 }); placEditPin(lat, lng, false); }
+      });
+    });
+    sugEl.classList.add('show');
+  } catch { sugEl.classList.remove('show'); }
+}
+
+document.addEventListener('click', e => {
+  if (!e.target.closest('.addr-wrap')) {
+    document.querySelectorAll('.addr-suggestions').forEach(el => el.classList.remove('show'));
+  }
+});
 
 async function geocodeAddress(inputId, mapId) {
   const query = document.getElementById(inputId).value.trim();
