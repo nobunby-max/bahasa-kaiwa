@@ -412,6 +412,7 @@
     <button class="btn-back" onclick="showHome()"><- Home</button>
     <h1>📍 Photo Map</h1>
     <span id="map-count" style="font-size:12px;color:rgba(255,255,255,0.5);"></span>
+    <button id="btn-show-location" onclick="showMyLocation()" style="border:none;cursor:pointer;border-radius:10px;font-size:12px;font-weight:600;padding:7px 12px;background:rgba(255,255,255,0.15);color:#fff;white-space:nowrap;transition:background .15s;" title="Show current location on map">📍 My Location</button>
     <button id="btn-copy-coords" onclick="copyCurrentCoords()" style="border:none;cursor:pointer;border-radius:10px;font-size:12px;font-weight:600;padding:7px 12px;background:rgba(255,255,255,0.15);color:#fff;white-space:nowrap;transition:background .15s;" title="Copy current GPS coordinates">📋 Copy GPS</button>
   </div>
   <div id="map"></div>
@@ -1154,6 +1155,28 @@ function applyGmapsCoords() {
   else if (_pendingGeoMapId === 'edit-mini-map' && editMap) { editMap.flyTo({ center: [lng, lat], zoom: 15 }); placEditPin(lat, lng, true); }
   closeGmaps();
   showToast('✅ Coordinates set');
+}
+
+// ── Show current location on main map ────────────────────────────────────
+let myLocationMarker = null;
+function showMyLocation() {
+  const btn = document.getElementById('btn-show-location');
+  if (!navigator.geolocation) { showToast('⚠️ Geolocation not supported'); return; }
+  btn.textContent = '📍 Getting…'; btn.disabled = true;
+  navigator.geolocation.getCurrentPosition(pos => {
+    const lat = pos.coords.latitude, lng = pos.coords.longitude;
+    if (!mainMap) { btn.textContent = '📍 My Location'; btn.disabled = false; return; }
+    mainMap.flyTo({ center: [lng, lat], zoom: 15 });
+    if (myLocationMarker) myLocationMarker.remove();
+    const el = document.createElement('div');
+    el.style.cssText = 'width:18px;height:18px;background:#3b82f6;border:3px solid #fff;border-radius:50%;box-shadow:0 0 0 4px rgba(59,130,246,0.3)';
+    myLocationMarker = new maplibregl.Marker({ element: el }).setLngLat([lng, lat]).addTo(mainMap);
+    showToast('📍 Showing your location');
+    btn.textContent = '📍 My Location'; btn.disabled = false;
+  }, err => {
+    showToast('⚠️ ' + (err.code === 1 ? 'Permission denied' : err.message));
+    btn.textContent = '📍 My Location'; btn.disabled = false;
+  }, { enableHighAccuracy: true, timeout: 10000 });
 }
 
 // ── Copy current GPS coordinates to clipboard ─────────────────────────────
