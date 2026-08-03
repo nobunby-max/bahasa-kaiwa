@@ -369,7 +369,7 @@
 </head>
 <body>
 
-<!-- ╔═ PASSWORD ══════════════════════════════════════════════════════════════╣ -->
+<!-- ╔═ PASSWORD ═══════════════════════════════════════════════════════════════╗ -->
 <div id="view-password">
   <div class="pw-logo">🗺️</div>
   <h1 class="pw-title">Photo Map</h1>
@@ -412,6 +412,7 @@
     <button class="btn-back" onclick="showHome()"><- Home</button>
     <h1>📍 Photo Map</h1>
     <span id="map-count" style="font-size:12px;color:rgba(255,255,255,0.5);"></span>
+    <button id="btn-copy-coords" onclick="copyCurrentCoords()" style="border:none;cursor:pointer;border-radius:10px;font-size:12px;font-weight:600;padding:7px 12px;background:rgba(255,255,255,0.15);color:#fff;white-space:nowrap;transition:background .15s;" title="Copy current GPS coordinates">📋 Copy GPS</button>
   </div>
   <div id="map"></div>
   <button class="btn-add-float" onclick="openUpload()">+ Add Photo</button>
@@ -602,7 +603,6 @@
               <option value="Customer">Customer</option>
               <option value="Government">Government / Authority</option>
               <option value="Internal">Internal</option>
-              <option value="Event">Event</option>
               <option value="Private">Private</option>
               <option value="Other">Other</option>
             </select>
@@ -620,7 +620,6 @@
               <option value="Customer">Customer</option>
               <option value="Government">Government / Authority</option>
               <option value="Internal">Internal</option>
-              <option value="Event">Event</option>
               <option value="Private">Private</option>
               <option value="Other">Other</option>
             </select>
@@ -706,7 +705,7 @@
   </div>
 </div>
 
-<!-- ╔═ TOAST ══════════════════════════════════════════════════════════════╣ -->
+<!-- ╔═ TOAST ══════════════════════════════════════════════════════════════════╗ -->
 <div id="toast"></div>
 
 <script>
@@ -1155,6 +1154,32 @@ function applyGmapsCoords() {
   else if (_pendingGeoMapId === 'edit-mini-map' && editMap) { editMap.flyTo({ center: [lng, lat], zoom: 15 }); placEditPin(lat, lng, true); }
   closeGmaps();
   showToast('✅ Coordinates set');
+}
+
+// ── Copy current GPS coordinates to clipboard ─────────────────────────────
+function copyCurrentCoords() {
+  const btn = document.getElementById('btn-copy-coords');
+  if (!navigator.geolocation) { showToast('⚠️ Geolocation not supported'); return; }
+  btn.textContent = '📍 Getting…'; btn.disabled = true;
+  navigator.geolocation.getCurrentPosition(pos => {
+    const lat = pos.coords.latitude.toFixed(6);
+    const lng = pos.coords.longitude.toFixed(6);
+    const text = `${lat}, ${lng}`;
+    navigator.clipboard.writeText(text).then(() => {
+      showToast(`📋 Copied: ${text}`);
+    }).catch(() => {
+      // fallback for older browsers
+      const el = document.createElement('textarea');
+      el.value = text; el.style.position = 'fixed'; el.style.opacity = '0';
+      document.body.appendChild(el); el.select(); document.execCommand('copy');
+      document.body.removeChild(el);
+      showToast(`📋 Copied: ${text}`);
+    });
+    btn.textContent = '📋 Copy GPS'; btn.disabled = false;
+  }, err => {
+    showToast('⚠️ ' + (err.code === 1 ? 'Permission denied' : err.message));
+    btn.textContent = '📋 Copy GPS'; btn.disabled = false;
+  }, { enableHighAccuracy: true, timeout: 10000 });
 }
 
 // ── GPS current location ──────────────────────────────────────────────────
