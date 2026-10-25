@@ -77,6 +77,7 @@
     .btn-home .icon { font-size: 36px; }
     .btn-home-map { background: #e94560; color: #fff; }
     .btn-home-upload { background: #fff; color: #1a1a2e; }
+    .btn-home-search { background: rgba(255,255,255,0.12); color: #fff; border: 1.5px solid rgba(255,255,255,0.2); }
     .home-count { margin-top: 40px; font-size: 13px; color: rgba(255,255,255,0.4); }
     .home-transfer { margin-top: 24px; display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
     .btn-transfer {
@@ -85,6 +86,50 @@
       font-size: 13px; font-weight: 600; cursor: pointer; transition: background .15s;
     }
     .btn-transfer:hover { background: rgba(255,255,255,0.18); }
+
+    /* ── Search View ── */
+    #view-search {
+      min-height: 100vh; display: none; flex-direction: column;
+      background: #f0f2f5;
+    }
+    #view-search.active { display: flex; }
+    .search-header {
+      display: flex; align-items: center; gap: 12px;
+      padding: 12px 16px; background: #1a1a2e; color: #fff;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+    }
+    .search-header h1 { font-size: 16px; font-weight: 600; flex: 1; }
+    .search-bar {
+      padding: 12px 16px; background: #fff;
+      border-bottom: 1px solid #e5e7eb; display: flex; gap: 8px;
+    }
+    .search-input {
+      flex: 1; padding: 10px 14px; border: 1.5px solid #e5e7eb;
+      border-radius: 10px; font-size: 15px; outline: none; font-family: inherit;
+    }
+    .search-input:focus { border-color: #e94560; }
+    .btn-search-go {
+      padding: 10px 18px; background: #e94560; color: #fff;
+      border: none; border-radius: 10px; font-size: 14px; font-weight: 700; cursor: pointer;
+    }
+    .search-results { flex: 1; overflow-y: auto; padding: 12px 16px; }
+    .search-empty { text-align: center; color: #9ca3af; font-size: 14px; margin-top: 60px; }
+    .search-result-item {
+      display: flex; gap: 12px; background: #fff; border-radius: 14px;
+      padding: 12px; margin-bottom: 10px; cursor: pointer;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.07); transition: box-shadow .15s;
+    }
+    .search-result-item:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.12); }
+    .search-thumb {
+      width: 72px; height: 72px; border-radius: 10px;
+      object-fit: cover; flex-shrink: 0; background: #f3f4f6;
+    }
+    .search-result-body { flex: 1; min-width: 0; }
+    .search-result-date { font-size: 11px; color: #9ca3af; margin-bottom: 2px; }
+    .search-result-addr { font-size: 13px; font-weight: 600; color: #1a1a2e; margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .search-result-snippet { font-size: 12px; color: #6b7280; line-height: 1.5; }
+    .search-highlight { background: #fef08a; border-radius: 2px; padding: 0 1px; }
+    .search-count { font-size: 12px; color: #6b7280; margin-bottom: 10px; }
 
     /* ── Map View ── */
     #view-map { height: 100vh; display: none; flex-direction: column; }
@@ -397,12 +442,31 @@
       <span class="icon">📷</span>
       Add Photo
     </button>
+    <button class="btn-home btn-home-search" onclick="showSearch()">
+      <span class="icon">🔍</span>
+      Search
+    </button>
   </div>
   <p class="home-count" id="home-count">Loading…</p>
   <div class="home-transfer">
     <button class="btn-transfer" onclick="exportData()">📤 Export Data</button>
     <button class="btn-transfer" onclick="document.getElementById('import-input').click()">📥 Import Data</button>
     <input type="file" id="import-input" accept=".json" style="display:none" onchange="importData(this)">
+  </div>
+</div>
+
+<!-- ╔═ SEARCH VIEW ═══════════════════════════════════════════════════════════╗ -->
+<div id="view-search" class="view">
+  <div class="search-header">
+    <button class="btn-back" onclick="showHome()"><- Home</button>
+    <h1>🔍 Search Photos</h1>
+  </div>
+  <div class="search-bar">
+    <input class="search-input" id="search-input" type="search" placeholder="Search comments, address, category…" onkeydown="if(event.key==='Enter') runSearch()">
+    <button class="btn-search-go" onclick="runSearch()">Search</button>
+  </div>
+  <div class="search-results" id="search-results">
+    <p class="search-empty">Enter keywords to search through photos.</p>
   </div>
 </div>
 
@@ -793,6 +857,61 @@ function showHome() {
   document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
   document.getElementById('view-home').classList.add('active');
   updateHomeCount();
+}
+function showSearch() {
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.getElementById('view-search').classList.add('active');
+  setTimeout(() => document.getElementById('search-input').focus(), 100);
+}
+
+function highlight(text, query) {
+  if (!text || !query) return text || '';
+  const escaped = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return text.replace(new RegExp(escaped, 'gi'), m => `<span class="search-highlight">${m}</span>`);
+}
+
+async function runSearch() {
+  const query = document.getElementById('search-input').value.trim();
+  const container = document.getElementById('search-results');
+  if (!query) { container.innerHTML = '<p class="search-empty">Enter keywords to search through photos.</p>'; return; }
+  container.innerHTML = '<p class="search-empty">Searching…</p>';
+  const all = await DB.load();
+  const q = query.toLowerCase();
+  const results = all.filter(p => {
+    return (p.comment || '').toLowerCase().includes(q)
+      || (p.address || '').toLowerCase().includes(q)
+      || (p.category1 || p.category || '').toLowerCase().includes(q)
+      || (p.category2 || '').toLowerCase().includes(q)
+      || (p.subcat1 || '').toLowerCase().includes(q)
+      || (p.subcat2 || '').toLowerCase().includes(q)
+      || (p.region || '').toLowerCase().includes(q)
+      || (p.date || '').toLowerCase().includes(q);
+  });
+  if (!results.length) { container.innerHTML = '<p class="search-empty">No results found for "' + query + '"</p>'; return; }
+  const snippet = (p) => {
+    const fields = [
+      p.comment && `💬 ${p.comment}`,
+      p.address && `📍 ${p.address}`,
+    ].filter(Boolean);
+    return fields.map(f => highlight(f, query)).join('<br>');
+  };
+  container.innerHTML = `<p class="search-count">${results.length} result${results.length > 1 ? 's' : ''} for "${query}"</p>` +
+    results.map(p => `
+      <div class="search-result-item" onclick="openLightboxFromSearch('${p.id}')">
+        <img class="search-thumb" src="${p.thumbnail || p.full || ''}" alt="">
+        <div class="search-result-body">
+          <div class="search-result-date">${highlight(p.date || 'Unknown date', query)}</div>
+          <div class="search-result-addr">${highlight(p.address || 'Address not set', query)}</div>
+          <div class="search-result-snippet">${snippet(p)}</div>
+        </div>
+      </div>
+    `).join('');
+}
+
+async function openLightboxFromSearch(id) {
+  showHome();
+  await new Promise(r => setTimeout(r, 50));
+  openLightbox(id);
 }
 function showMap() {
   document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
